@@ -11,13 +11,13 @@
   ============================================================
   DAILY UPDATE BLOCK — edit ONLY the data block below each morning.
   All numbers on the page render from PORTFOLIO_DATA.
-  Last verified: Saturday, Oct 24, 2026
+  Last verified: Sunday, Oct 25, 2026
   ============================================================
 -->
 <script>
 window.PORTFOLIO_DATA = {
-  asOf: "Oct 24, 2026",
-  asOfLong: "Saturday, October 24, 2026",
+  asOf: "Oct 25, 2026",
+  asOfLong: "Sunday, October 25, 2026",
   built: 20,
   targetApps: 20,
   targetLowPerApp: 30,
@@ -215,11 +215,11 @@ window.PORTFOLIO_DATA = {
       price: 4.99,
       netPerSale: 4.24,
       salesForTarget: "7–12 subscribers/mo",
+      proceeds: 0.00,
+      onTarget: false,
       unlockWord: "Subscription",
       priceNote: "per month — or $39.99/yr, 7-day free trial",
       netNote: "per subscriber per month after the 15% store fee",
-      proceeds: 0.00,
-      onTarget: false,
       play: "Closed testing in review",
       playState: "review",
       apple: "In review — submitted Oct 24",
@@ -697,15 +697,21 @@ window.PORTFOLIO_DATA = {
   $("slotsBuilt").textContent = D.built;
   $("slotsLeft").textContent = D.targetApps - D.built;
 
-  // Slots row: 5 built (live/review) + 1 building + rest open
+  // Slots row: 16 built + 4 built/queued for store setup
   var slots = $("slotsRow");
+  var buildingTitles = {
+    17: "TrueWage — built, store setup next",
+    18: "TrueRating — built, store setup next",
+    19: "TSP Projector — built, store setup next",
+    20: "Childcare Cost Truth — built, store setup next"
+  };
   for (var i = 1; i <= D.targetApps; i++){
     var s = document.createElement("div");
     s.className = "slot";
     s.textContent = i;
     if (i <= 16) s.classList.add("built");
     else s.classList.add("building");
-    s.title = i <= 16 ? "Built" : (["TrueWage", "TrueRating", "TSP Projector", "Childcare Cost Truth"][i - 17] + " — built, store setup next");
+    s.title = i <= 16 ? "Built" : buildingTitles[i];
     slots.appendChild(s);
   }
 
@@ -732,7 +738,7 @@ window.PORTFOLIO_DATA = {
 
     btn.innerHTML =
       '<div class="app-top"><div><p class="app-name">' + a.name + '</p>' +
-      '<div class="app-price">' + (a.unlockWord || "Unlock") + ' <b>$' + a.price.toFixed(2) + '</b> · nets $' + a.netPerSale.toFixed(2) + '</div></div>' +
+      '<div class="app-price">' + (a.unlockWord ? a.unlockWord : "Unlock") + ' <b>$' + a.price.toFixed(2) + '</b> · nets $' + a.netPerSale.toFixed(2) + '</div></div>' +
       '<div class="proceeds"><div class="amt">' + money(a.proceeds) + '</div><div class="lbl">This month</div></div></div>' +
 
       '<div class="target-row"><span class="t">Target <b>$30–$50/mo</b></span>' +
@@ -745,8 +751,8 @@ window.PORTFOLIO_DATA = {
       testerHtml +
       '<div class="expand-hint">Tap for sales math ↓</div>' +
       '<div class="app-detail"><dl>' +
-        '<dt>Price</dt><dd><strong>$' + a.price.toFixed(2) + '</strong> ' + (a.priceNote || "one-time unlock") + '</dd>' +
-        '<dt>You net</dt><dd><strong>$' + a.netPerSale.toFixed(2) + '</strong> ' + (a.netNote || "per sale after the 15% store fee") + '</dd>' +
+        '<dt>Price</dt><dd><strong>$' + a.price.toFixed(2) + '</strong> ' + (a.priceNote ? a.priceNote : "one-time unlock") + '</dd>' +
+        '<dt>You net</dt><dd><strong>$' + a.netPerSale.toFixed(2) + '</strong> ' + (a.netNote ? a.netNote : "per sale after the 15% store fee") + '</dd>' +
         '<dt>To hit target</dt><dd><strong>' + a.salesForTarget + '</strong> to make $30–$50</dd>' +
         '<dt>This month</dt><dd><strong>' + money(a.proceeds) + '</strong> — no production sales yet</dd>' +
       '</dl></div>';
