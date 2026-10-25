@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Your phone, answered. Every call. Every time. An AI receptionist that books appointments, a Google review engine, and a website chat agent for your business. $500 setup, $497/month, no long contract." />
+    <link rel="icon" href="data:," />
+    <title>Business Automations — Your Phone, Answered | Williams Apps</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #f6f8fa;
+        --surface: #ffffff;
+        --surface-2: #edf1f5;
+        --ink: #101c28;
+        --muted: #48596a;
+        --navy: #0c2033;
+        --navy-ink: #eef3f7;
+        --navy-muted: #a9bdcc;
+        --gold: #c07f10;
+        --gold-bright: #e8a93c;
+        --gold-soft: #fdf3dd;
+        --line: #d9e1e8;
+        --good: #1c7c46;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #08131c;
+          --surface: #101f2c;
+          --surface-2: #16293a;
+          --ink: #edf2f6;
+          --muted: #a3b4c1;
+          --navy: #050d14;
+          --navy-ink: #eef3f7;
+          --navy-muted: #93a9ba;
+          --gold: #e8a93c;
+          --gold-bright: #e8a93c;
+          --gold-soft: #2a2110;
+          --line: #22384a;
+          --good: #4cc084;
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        font-family: "Libre Franklin", system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        line-height: 1.55;
+        -webkit-font-smoothing: antialiased;
+      }
+      img { max-width: 100%; display: block; }
+      a { color: inherit; }
+      .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+
+      /* ---------- Nav ---------- */
+      .nav {
+        position: sticky; top: 0; z-index: 20;
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+      }
+      .nav-inner {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 16px; padding: 12px 0;
+      }
+      .brand { font-weight: 900; letter-spacing: -0.01em; font-size: 17px; text-decoration: none; white-space: nowrap; }
+      .brand span { color: var(--gold); }
+      .nav-links { display: flex; gap: 22px; align-items: center; }
+      .nav-links a { text-decoration: none; font-size: 14.5px; font-weight: 600; color: var(--muted); }
+      .nav-links a:hover { color: var(--ink); }
+      .nav-links a.cta {
+        background: var(--navy); color: var(--navy-ink);
+        padding: 8px 16px; border-radius: 8px; font-weight: 700;
+      }
+      @media (prefers-color-scheme: dark) {
+        .nav-links a.cta { background: var(--gold-bright); color: #14100a; }
+      }
+      @media (max-width: 640px) {
+        .nav-links a:not(.cta) { display: none; }
+      }
+
+      /* ---------- Hero ---------- */
+      .hero { padding: 52px 0 8px; }
+      h1 {
+        font-size: clamp(36px, 6vw, 54px); line-height: 1.06;
+        letter-spacing: -0.025em; font-weight: 900; margin: 0 0 16px;
+        max-width: 16ch;
+      }
+      h1 .hl { color: var(--gold); }
+      .hero-sub { font-size: clamp(17px, 2.4vw, 20px); color: var(--muted); max-width: 54ch; margin: 0 0 26px; }
+      .hero-sub strong { color: var(--ink); }
+      .hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 26px; }
+      .btn {
+        display: inline-block; text-decoration: none; font-weight: 800; font-size: 16px;
+        padding: 14px 26px; border-radius: 10px;
+      }
+      .btn-primary { background: var(--gold-bright); color: #171106; }
+      .btn-primary:hover { filter: brightness(1.06); }
+      .btn-ghost { border: 1.5px solid var(--line); color: var(--ink); background: var(--surface); }
+      .hero-points { display: flex; flex-wrap: wrap; gap: 8px 22px; list-style: none; padding: 0; margin: 0; font-size: 15px; font-weight: 600; color: var(--muted); }
+      .hero-points li { display: flex; align-items: center; gap: 7px; }
+      .tick { color: var(--good); font-weight: 900; }
+      .proof {
+        margin: 38px 0 0; padding: 18px 0;
+        border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+      }
+      .proof p { margin: 0; font-size: 15px; color: var(--muted); }
+      .proof .apps { font-weight: 800; color: var(--ink); }
+
+      /* ---------- Sections ---------- */
+      section { padding: 52px 0 8px; }
+      h2 { font-size: clamp(26px, 4.2vw, 36px); line-height: 1.12; letter-spacing: -0.02em; font-weight: 900; margin: 0 0 12px; }
+      .lede { font-size: 17px; color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
+      .lede strong { color: var(--ink); }
+
+      /* Packages */
+      .pkgs { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
+      @media (max-width: 700px) { .pkgs { grid-template-columns: 1fr; } }
+      .pkg {
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: 16px; padding: 28px 26px; display: flex; flex-direction: column;
+        position: relative;
+      }
+      .pkg.featured { border: 2px solid var(--gold-bright); }
+      .pkg .badge {
+        position: absolute; top: -13px; left: 26px;
+        background: var(--gold-bright); color: #171106;
+        font-size: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase;
+        padding: 5px 12px; border-radius: 999px;
+      }
+      .pkg h3 { margin: 0 0 4px; font-size: 19px; font-weight: 800; }
+      .pkg .for { color: var(--muted); font-size: 14.5px; margin: 0 0 18px; }
+      .price { font-size: 44px; font-weight: 900; letter-spacing: -0.03em; line-height: 1; margin: 0 0 4px; }
+      .price-note { font-size: 13px; color: var(--muted); margin: 0 0 20px; }
+      .pkg ul { list-style: none; padding: 0; margin: 0 0 24px; flex: 1; }
+      .pkg li { padding: 7px 0 7px 26px; position: relative; font-size: 15px; border-top: 1px solid var(--line); }
+      .pkg li:first-child { border-top: none; }
+      .pkg li::before { content: "✓"; position: absolute; left: 2px; top: 7px; color: var(--good); font-weight: 900; }
+      .pkg .btn { text-align: center; }
+      .pkg .btn-solid { background: var(--navy); color: var(--navy-ink); }
+      @media (prefers-color-scheme: dark) { .pkg .btn-solid { background: var(--surface-2); color: var(--ink); } }
+      .pkg.featured .btn-solid { background: var(--gold-bright); color: #171106; }
+      .terms {
+        margin-top: 22px; background: var(--surface-2); border-radius: 14px;
+        padding: 20px 24px; font-size: 15px; color: var(--muted);
+      }
+      .terms strong { color: var(--ink); }
+      .terms p { margin: 0 0 8px; }
+      .terms p:last-child { margin-bottom: 0; }
+
+      /* Plain talk blocks */
+      .plain-block {
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: 14px; padding: 26px;
+      }
+      .plain-block p { margin: 0 0 14px; font-size: 16.5px; color: var(--muted); }
+      .plain-block p:last-child { margin-bottom: 0; }
+      .plain-block strong { color: var(--ink); }
+      .big-line {
+        font-size: clamp(22px, 3.6vw, 30px); font-weight: 900; letter-spacing: -0.02em;
+        color: var(--ink); line-height: 1.2; margin: 0 0 16px;
+      }
+
+      /* Steps */
+      .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+      @media (max-width: 700px) { .steps { grid-template-columns: 1fr; } }
+      .step {
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: 14px; padding: 22px;
+      }
+      .step .num {
+        font-size: 30px; font-weight: 900; color: var(--gold);
+        letter-spacing: -0.03em; line-height: 1; display: block; margin-bottom: 12px;
+      }
+      .step h3 { margin: 0 0 6px; font-size: 17px; font-weight: 800; }
+      .step p { margin: 0; font-size: 14.5px; color: var(--muted); }
+
+      /* Who it's for — chips */
+      .chips { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; padding: 0; margin: 0 0 22px; }
+      .chips li {
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: 999px; padding: 8px 16px; font-size: 14.5px; font-weight: 600;
+      }
+
+      /* FAQ */
+      .faq { max-width: 780px; }
+      details {
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: 12px; margin-bottom: 12px; padding: 0 22px;
+      }
+      summary {
+        cursor: pointer; font-weight: 700; font-size: 16.5px;
+        padding: 18px 0; list-style: none; display: flex; justify-content: space-between; gap: 14px;
+      }
+      summary::-webkit-details-marker { display: none; }
+      summary::after { content: "+"; font-weight: 900; color: var(--gold); font-size: 20px; line-height: 1.2; }
+      details[open ] summary::after { content: "–"; }
+      details p { margin: 0 0 18px; color: var(--muted); font-size: 15.5px; }
+
+      /* Contact */
+      .contact {
+        background: var(--navy); color: var(--navy-ink);
+        border-radius: 18px; padding: 40px 34px; margin: 56px 0 0;
+      }
+      .contact h2 { color: var(--navy-ink); margin-bottom: 10px; }
+      .contact p { color: var(--navy-muted); font-size: 17px; max-width: 52ch; margin: 0 0 26px; }
+      .contact .contact-legal { font-size: 14px; margin: -12px 0 24px; }
+      .contact .contact-hours { font-size: 15px; margin: 22px 0 0; }
+      .contact .contact-hours strong { color: var(--navy-ink); }
+      .contact-btns { display: flex; flex-wrap: wrap; gap: 12px; }
+      .contact .btn-gold { background: var(--gold-bright); color: #171106; }
+      .contact .btn-line { border: 1.5px solid #33506b; color: var(--navy-ink); background: transparent; }
+      footer { padding: 34px 0 44px; color: var(--muted); font-size: 14px; }
+      footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between; }
+
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="../">Williams <span>Apps</span></a>
+        <div class="nav-links">
+          <a href="#services">What you get</a>
+          <a href="#demo">Hear it work</a>
+          <a href="#price">Price</a>
+          <a href="#faq">Questions</a>
+          <a href="../">App building</a>
+          <a class="cta" href="#contact">Get started</a>
+        </div>
+      </div>
+    </nav>
+
+    <header class="hero wrap" id="top">
+      <h1>Your phone, answered. <span class="hl">Every call. Every time.</span></h1>
+      <p class="hero-sub">
+        Every missed call is a customer dialing the next name on the list. We put a receptionist on
+        your business line that answers day and night, books the appointment, and asks for the
+        review — on the phone number you already have. <strong>You get the bookings. We run the system.</strong>
+      </p>
+      <div class="hero-ctas">
+        <a class="btn btn-primary" href="#demo">▶ Hear it work</a>
+        <a class="btn btn-ghost" href="#price">See the price — $500 + $497/mo</a>
+      </div>
+      <ul class="hero-points">
+        <li><span class="tick">✓</span> Answers 24/7 — nights, weekends, mid-job</li>
+        <li><span class="tick">✓</span> Books appointments &amp; confirms by text</li>
+        <li><span class="tick">✓</span> Works with just a phone line — no internet needed at your shop</li>
+      </ul>
+
+      <div class="proof">
+        <p>
+          From the team at <span class="apps">Williams Apps</span> — the app-building service of
+          sw4cw Deliveries LLC. We build apps for businesses, and now we answer their phones, too.
+        </p>
+      </div>
+    </header>
+
+    <main>
+      <section class="wrap" id="services">
+        <h2>Three things, working while you work</h2>
+        <p class="lede">One system, set up and run by us. You never touch a dashboard, and there's nothing new to learn.</p>
+        <div class="steps">
+          <div class="step">
+            <span class="num">☎</span>
+            <h3>AI Phone Receptionist</h3>
+            <p>Answers every call on your existing number, 24/7. It knows your services, your prices, and your hours, books the appointment, and sends the confirmation text. The booking lands with you by text — even when both hands are busy.</p>
+          </div>
+          <div class="step">
+            <span class="num">★</span>
+            <h3>Google Review Engine</h3>
+            <p>After every job, your customer gets a friendly text asking how it went. Happy customers go straight to your Google reviews. Unhappy ones come to you first — privately — so you can make it right before it ever goes public.</p>
+          </div>
+          <div class="step">
+            <span class="num">💬</span>
+            <h3>Website Chat Agent</h3>
+            <p>A chat agent on your website that answers questions and books appointments while you sleep. Same knowledge, same booking — no chat left sitting there until morning. No website? The phone and reviews carry the load on their own.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="wrap" id="who">
+        <h2>Built for shops that book by phone</h2>
+        <p class="lede">If your phone rings while your hands are busy, this was built for you.</p>
+        <ul class="chips">
+          <li>Barbershops &amp; salons</li>
+          <li>Nail shops</li>
+          <li>HVAC</li>
+          <li>Plumbing</li>
+          <li>Electrical</li>
+          <li>Auto repair &amp; detailing</li>
+          <li>Tattoo studios</li>
+          <li>Pet groomers</li>
+          <li>Any appointment-based shop</li>
+        </ul>
+        <div class="plain-block">
+          <p>
+            A one-chair shop or a five-truck crew — the shape is the same: the phone rings in the
+            middle of a job, nobody can grab it, and that customer books with whoever picks up first.
+            <strong>This makes sure it's you.</strong>
+          </p>
+        </div>
+      </section>
+
+      <section class="wrap" id="demo">
+        <div class="contact">
+          <h2>Hear it work.</h2>
+          <p>Don't take our word for it. Call and book a haircut with our demo receptionist — it answers as a barbershop, knows the prices and the barbers, and books you in about thirty seconds. That's your customers' experience, on your line.</p>
+          <div class="contact-btns">
+            <!-- DEMO LINE: both demo buttons dial DEMO_TEL (see the script at the bottom of this page). Until the live demo number is provisioned, DEMO_TEL is the business line — callers reach us and we send them the live demo number. -->
+            <a class="btn btn-gold demo-call" href="tel:+13468069493">▶ Call the demo</a>
+            <a class="btn btn-line" href="sms:+13468069493">Text us for the demo number</a>
+          </div>
+          <p class="contact-hours">Call or text <strong>346-806-9493</strong> and we'll put the live demo in your ear — then picture it answering with <strong>your</strong> business name.</p>
+        </div>
+      </section>
+
+      <section class="wrap" id="price">
+        <h2>One price. It pays for itself.</h2>
+        <p class="lede">Flat, in writing, before we start — and there's no long contract holding you to it.</p>
+
+        <div class="pkgs" style="grid-template-columns: 1fr; max-width: 560px;">
+          <article class="pkg featured">
+            <span class="badge">Business Automations</span>
+            <h3>Receptionist + Reviews + Chat</h3>
+            <p class="for">Your phone, answered. Every call. Every time.</p>
+            <p class="price">$497<span style="font-size: 20px; letter-spacing: 0;">/month</span></p>
+            <p class="price-note">$500 one-time setup · No long contract — month to month</p>
+            <ul>
+              <li>Every call answered, 24/7, on your existing number</li>
+              <li>Appointments booked, with confirmation texts</li>
+              <li>Review requests by text after every job</li>
+              <li>Website chat agent included</li>
+              <li>Works with just a phone line — no internet needed at your shop</li>
+              <li>We build it, connect it, and keep it running</li>
+            </ul>
+            <a class="btn btn-solid" href="#contact">Start — call or text us</a>
+          </article>
+        </div>
+
+        <div class="terms">
+          <p class="big-line" style="margin-bottom: 10px;">One saved job pays for it.</p>
+          <p>One AC callout. One full detail. One Saturday of chairs that would have sat empty. A single job you used to miss covers the month — everything after that is money you already earned but used to lose to a ringing phone.</p>
+          <p><strong>How you pay:</strong> the $500 setup starts your build, and your first month begins the day we switch it on. <strong>Zelle or Cash App only</strong> — no credit cards. Payments go to <strong>sw4cw Deliveries LLC</strong>.</p>
+          <p><strong>No long contract:</strong> it's month to month. If it ever stops earning its keep, you can cancel — we just ask that you tell us before the next month starts.</p>
+        </div>
+      </section>
+
+      <section class="wrap" id="how">
+        <h2>How it works</h2>
+        <p class="lede">Three steps. Your part takes one short call.</p>
+        <div class="steps">
+          <div class="step">
+            <span class="num">1</span>
+            <h3>Tell us about your business</h3>
+            <p>One short call: your services, your prices, your hours, how you like appointments booked. That's the whole interview.</p>
+          </div>
+          <div class="step">
+            <span class="num">2</span>
+            <h3>We build it and connect your number</h3>
+            <p>We set up your receptionist and connect it to the number you already have — a simple forwarding change on your phone line. No new equipment, no internet needed, no new number to advertise.</p>
+          </div>
+          <div class="step">
+            <span class="num">3</span>
+            <h3>You get the bookings</h3>
+            <p>Appointments arrive by text, reviews stack up on Google, and we keep the system running and updated. You just do the work — the paid kind.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="wrap" id="faq">
+        <h2>Straight answers (FAQs)</h2>
+        <div style="height:14px"></div>
+        <div class="faq">
+          <details>
+            <summary>Do I need internet or a computer at my shop?</summary>
+            <p>No. The system runs on our side. Your phone line just forwards calls to it — that works on a plain landline or a basic cell phone. If all you have is a phone, you have everything you need.</p>
+          </details>
+          <details>
+            <summary>Do I have to change my phone number?</summary>
+            <p>No — your number stays yours, and your customers keep dialing the same digits. Calls forward to the system, and you can ring your own phone first and let it catch only the calls you miss, or send every call straight to it. Your call.</p>
+          </details>
+          <details>
+            <summary>What does it sound like?</summary>
+            <p>Like a person answering your phone — because that's the job. It greets callers with your business name, knows your prices and hours, and books the appointment in a normal conversation. Hear it yourself in the demo above.</p>
+          </details>
+          <details>
+            <summary>What if a caller asks something it doesn't know?</summary>
+            <p>It doesn't guess. It takes the caller's name and number, and you get the message by text right away so you can call them back yourself.</p>
+          </details>
+          <details>
+            <summary>Is there a contract?</summary>
+            <p>No long contract. The setup is a one-time $500, and the service is month to month at $497. If it stops earning its keep, you can cancel before the next month starts.</p>
+          </details>
+          <details>
+            <summary>What kinds of businesses is this for?</summary>
+            <p>Any business that books by phone and can't always answer: barbershops and salons, HVAC, plumbing and electrical, auto repair and detailing, tattoo studios, pet groomers — and any appointment-based shop where a missed call is a missed job.</p>
+          </details>
+          <details>
+            <summary>How do I pay you?</summary>
+            <p>By Zelle or Cash App — no credit cards. The $500 setup starts your build; the $497 monthly begins the day your line goes live. Payments go to sw4cw Deliveries LLC.</p>
+          </details>
+        </div>
+      </section>
+
+      <div class="wrap">
+        <div class="contact" id="contact">
+          <h2>Missed calls are missed money. Let's talk.</h2>
+          <p>One conversation tells you exactly how it would work on your line — your services, your prices, your bookings by text. No pressure, no tech talk.</p>
+          <p class="contact-legal">Business Automations is a service of <strong>sw4cw Deliveries LLC</strong>.</p>
+          <div class="contact-btns">
+            <a class="btn btn-gold" href="tel:+13468069493">Call or text: 346-806-9493</a>
+            <a class="btn btn-line" href="mailto:carlton.will143@gmail.com">carlton.will143@gmail.com</a>
+          </div>
+          <p class="contact-hours"><strong>Email:</strong> seven days a week — write any time. <strong>Call or text:</strong> Monday through Saturday, 10 AM to 6 PM Central.</p>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span><strong>Williams Apps</strong> — app builds &amp; business automations by <strong>sw4cw Deliveries LLC</strong></span>
+        <span>You own it. We maintain it.</span>
+      </div>
+    </footer>
+
+    <script>
+      // ================================================================
+      // LIVE DEMO LINE — the ONE place the demo number lives.
+      // When the demo number is provisioned, change ONLY the value of
+      // DEMO_TEL below (and the fallback hrefs on the a.demo-call
+      // buttons in the #demo section) to the live demo number.
+      // Until then it points at the business line: callers reach us and
+      // we send them the live demo number.
+      // ================================================================
+      var DEMO_TEL = "tel:+13468069493";
+      document.querySelectorAll("a.demo-call").forEach(function (a) { a.href = DEMO_TEL; });
+    </script>
+  </body>
+</html>
