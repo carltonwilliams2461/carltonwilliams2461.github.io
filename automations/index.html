@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="Your phone, answered. Every call. Every time. An AI receptionist that books appointments, a Google review engine, and a website chat agent for your business. $500 setup, $497/month, no long contract." />
+    <meta name="description" content="Your phone, answered. Every call. Every time. An AI receptionist that books appointments, a Google review engine, and a website chat agent for your business. $500 setup, plans from $197/month, no long contract." />
     <link rel="icon" href="data:," />
     <title>Business Automations — Your Phone, Answered | Williams Apps</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -123,6 +123,8 @@
       /* Packages */
       .pkgs { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: stretch; }
       @media (max-width: 700px) { .pkgs { grid-template-columns: 1fr; } }
+      .pkgs.tiers { grid-template-columns: repeat(3, 1fr); }
+      @media (max-width: 1000px) { .pkgs.tiers { grid-template-columns: 1fr; max-width: 560px; margin: 0 auto; } }
       .pkg {
         background: var(--surface); border: 1px solid var(--line);
         border-radius: 16px; padding: 28px 26px; display: flex; flex-direction: column;
@@ -249,7 +251,7 @@
       </p>
       <div class="hero-ctas">
         <a class="btn btn-primary" href="#demo">▶ Hear it work</a>
-        <a class="btn btn-ghost" href="#price">See the price — $500 + $497/mo</a>
+        <a class="btn btn-ghost" href="#price">See the plans — from $197/mo</a>
       </div>
       <ul class="hero-points">
         <li><span class="tick">✓</span> Answers 24/7 — nights, weekends, mid-job</li>
@@ -325,22 +327,51 @@
       </section>
 
       <section class="wrap" id="price">
-        <h2>One price. It pays for itself.</h2>
-        <p class="lede">Flat, in writing, before we start — and there's no long contract holding you to it.</p>
+        <h2>Three plans. Pick the one that fits.</h2>
+        <p class="lede">Flat, in writing, before we start — and there's no long contract holding you to it. Every plan starts with the same $500 one-time setup; the monthly depends on how much of your front desk you want handled.</p>
 
-        <div class="pkgs" style="grid-template-columns: 1fr; max-width: 560px;">
-          <article class="pkg featured">
-            <span class="badge">Business Automations</span>
-            <h3>Receptionist + Reviews + Chat</h3>
+        <div class="pkgs tiers">
+          <article class="pkg">
+            <h3>Answer</h3>
             <p class="for">Your phone, answered. Every call. Every time.</p>
-            <p class="price">$497<span style="font-size: 20px; letter-spacing: 0;">/month</span></p>
+            <p class="price">$197<span style="font-size: 20px; letter-spacing: 0;">/month</span></p>
             <p class="price-note">$500 one-time setup · No long contract — month to month</p>
             <ul>
               <li>Every call answered, 24/7, on your existing number</li>
-              <li>Appointments booked, with confirmation texts</li>
-              <li>Review requests by text after every job</li>
-              <li>Website chat agent included</li>
+              <li>Messages taken and texted to you right away</li>
+              <li>Call summaries and transcripts for every call</li>
+              <li>Spam calls handled — they never reach you</li>
               <li>Works with just a phone line — no internet needed at your shop</li>
+              <li>We build it, connect it, and keep it running</li>
+            </ul>
+            <a class="btn btn-solid" href="#contact">Start — call or text us</a>
+          </article>
+
+          <article class="pkg featured">
+            <span class="badge">Most popular</span>
+            <h3>Answer + Book</h3>
+            <p class="for">Answering, plus real bookings on your calendar.</p>
+            <p class="price">$297<span style="font-size: 20px; letter-spacing: 0;">/month</span></p>
+            <p class="price-note">$500 one-time setup · No long contract — month to month</p>
+            <ul>
+              <li>Everything in Answer</li>
+              <li>Appointments booked for real — not just messages taken</li>
+              <li>Books into each staff member's own calendar — every barber, tech, or stylist, individually</li>
+              <li>Confirmation texts to your customers</li>
+              <li>We build it, connect it, and keep it running</li>
+            </ul>
+            <a class="btn btn-solid" href="#contact">Start — call or text us</a>
+          </article>
+
+          <article class="pkg">
+            <h3>Full Stack</h3>
+            <p class="for">The whole front desk — calls, bookings, reviews, and chat.</p>
+            <p class="price">$497<span style="font-size: 20px; letter-spacing: 0;">/month</span></p>
+            <p class="price-note">$500 one-time setup · No long contract — month to month</p>
+            <ul>
+              <li>Everything in Answer + Book</li>
+              <li>Google review engine — review requests by text after every job</li>
+              <li>Website chat agent that books visitors while you sleep</li>
               <li>We build it, connect it, and keep it running</li>
             </ul>
             <a class="btn btn-solid" href="#contact">Start — call or text us</a>
@@ -399,7 +430,7 @@
           </details>
           <details>
             <summary>Is there a contract?</summary>
-            <p>No long contract. The setup is a one-time $500, and the service is month to month at $497. If it stops earning its keep, you can cancel before the next month starts.</p>
+            <p>No long contract. The setup is a one-time $500, and the service is month to month — plans run $197, $297, or $497 a month depending on the tier you pick. If it stops earning its keep, you can cancel before the next month starts.</p>
           </details>
           <details>
             <summary>What kinds of businesses is this for?</summary>
@@ -407,7 +438,7 @@
           </details>
           <details>
             <summary>How do I pay you?</summary>
-            <p>By Zelle or Cash App — no credit cards. The $500 setup starts your build; the $497 monthly begins the day your line goes live. Payments go to sw4cw Deliveries LLC.</p>
+            <p>By Zelle or Cash App — no credit cards. The $500 setup starts your build; your plan's monthly charge begins the day your line goes live. Payments go to sw4cw Deliveries LLC.</p>
           </details>
         </div>
       </section>
