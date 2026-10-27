@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Etsy Setup — Your Code</title>
+<style>
+  body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:#0f5132; color:#fff; margin:0; padding:24px; text-align:center; }
+  .card { background:#fff; color:#14213d; max-width:640px; margin:6vh auto; border-radius:16px; padding:28px 22px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  h1 { font-size:22px; margin:0 0 8px; }
+  p { font-size:16px; line-height:1.45; }
+  #code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:20px; word-break:break-all; background:#eef2f7; border:2px dashed #0f5132; border-radius:10px; padding:16px; margin:18px 0; }
+  button { background:#0f5132; color:#fff; border:0; border-radius:10px; font-size:18px; padding:14px 30px; cursor:pointer; }
+  button:active { transform: scale(.98); }
+  #err { color:#b00020; font-weight:600; }
+  .small { font-size:13px; color:#555; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>✅ Etsy is connected — one last step</h1>
+  <p>Tap <b>Copy the code</b>, then paste it to Lil C in your chat.<br>The code only works once and expires fast, so send it right away.</p>
+  <div id="code">Reading your code…</div>
+  <button id="copyBtn" type="button">Copy the code</button>
+  <p id="msg" class="small"></p>
+  <p id="err"></p>
+</div>
+<script>
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get('code');
+  var error = params.get('error');
+  var box = document.getElementById('code');
+  var msg = document.getElementById('msg');
+  if (error) {
+    box.textContent = 'No code — Etsy sent an error instead.';
+    document.getElementById('err').textContent = 'Error: ' + error + (params.get('error_description') ? ' — ' + params.get('error_description') : '');
+  } else if (code) {
+    box.textContent = code;
+  } else {
+    box.textContent = 'No code in this link. Go back and click the Etsy approve link again.';
+  }
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    if (!code) { msg.textContent = 'Nothing to copy yet.'; return; }
+    function done() { msg.textContent = 'Copied ✅ — now paste it to Lil C.'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(done, function () { fallback(); });
+    } else { fallback(); }
+    function fallback() {
+      var r = document.createRange(); r.selectNodeContents(box);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      try { document.execCommand('copy'); done(); } catch (e) { msg.textContent = 'Copy failed — long-press the code and copy it by hand.'; }
+    }
+  });
+</script>
+</body>
+</html>
