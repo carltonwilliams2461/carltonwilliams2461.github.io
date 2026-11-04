@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SPECTER ARENA — Eat the Light. Don't Get Eaten.</title>
+<meta name="description" content="A neon ghost-eat-ghost arena. Gobble glowing orbs, hunt smaller ghosts, phase through the big ones — if you can afford to burn the size.">
+<!-- CrazyGames SDK v3 — must load before game code. If it fails to load
+     (plain static host / local dev), the game runs fully standalone. -->
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<style>
+  :root { color-scheme: dark; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    background:#05060f; color:#eaf6ff;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    height:100%; overflow:hidden;
+    -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #wrap {
+    height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px; padding:8px;
+  }
+  #hud {
+    width:min(96vw, 960px); display:flex; align-items:center; gap:12px;
+    font-size:clamp(13px, 2.5vw, 19px); font-weight:bold;
+  }
+  #hud .spacer { flex:1; }
+  #hudTitle {
+    font-size:clamp(12px, 2.4vw, 18px); letter-spacing:2px;
+    background:linear-gradient(90deg,#a5fbff,#57f7ff 40%,#ff5df2);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  #sizeVal.phasing { color:#ff5d7a; }
+  .iconbtn {
+    background:#131a33; color:#eaf6ff; border:2px solid #2b3f73; border-radius:10px;
+    font-size:clamp(14px, 2.6vw, 19px); padding:3px 11px; cursor:pointer; line-height:1.25;
+  }
+  .iconbtn:active { transform:translateY(1px); }
+  #stage { position:relative; width:min(96vw, 960px); }
+  canvas {
+    display:block; width:100%; aspect-ratio: 960 / 600; background:#070818;
+    border:3px solid #2b3f73; border-radius:12px; touch-action:none;
+  }
+  /* leaderboard */
+  #board {
+    position:absolute; top:10px; right:10px; width:172px; pointer-events:none;
+    background:rgba(6,8,22,.66); border:1px solid rgba(87,247,255,.35); border-radius:10px;
+    padding:7px 10px; font-size:12.5px; line-height:1.5; z-index:3;
+  }
+  #board h3 { font-size:11px; letter-spacing:2px; color:#57f7ff; margin-bottom:2px; }
+  #board ol { list-style:none; }
+  #board li { display:flex; gap:6px; white-space:nowrap; overflow:hidden; }
+  #board li .nm { flex:1; overflow:hidden; text-overflow:ellipsis; opacity:.92; }
+  #board li.me { color:#a5fbff; font-weight:bold; }
+  #board li .dot { width:9px; height:9px; border-radius:50%; margin-top:4px; flex:none; }
+  #eventMsg {
+    position:absolute; top:12px; left:50%; transform:translateX(-50%);
+    font-weight:bold; letter-spacing:2px; font-size:clamp(15px, 3.4vw, 24px);
+    color:#ffd94d; text-shadow:0 2px 12px rgba(0,0,0,.9); pointer-events:none; z-index:3;
+    opacity:0; transition:opacity .3s;
+  }
+  #phaseBtn {
+    position:absolute; right:14px; bottom:14px; z-index:4;
+    width:86px; height:86px; border-radius:50%;
+    background:rgba(87,247,255,.14); border:2px solid #57f7ff; color:#a5fbff;
+    font:inherit; font-weight:bold; font-size:15px; letter-spacing:1px; cursor:pointer;
+    touch-action:none;
+  }
+  #phaseBtn.on { background:rgba(255,93,122,.35); border-color:#ff5d7a; color:#ffd7de; }
+  .overlay {
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; background:rgba(4,5,16,.88); border-radius:12px; padding:16px; gap:10px;
+    overflow-y:auto; z-index:6;
+  }
+  .overlay h1 {
+    font-size:clamp(34px, 7.6vw, 60px); letter-spacing:2px;
+    background:linear-gradient(90deg,#d6fcff,#57f7ff 45%,#ff5df2);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 4px 14px rgba(0,0,0,.8));
+  }
+  .overlay h2 { font-size:clamp(22px, 5vw, 34px); color:#57f7ff; }
+  .overlay p { max-width:580px; line-height:1.45; font-size:clamp(13px, 2.7vw, 17px); }
+  .overlay .small { font-size:clamp(12px, 2.4vw, 15px); opacity:.85; }
+  .coverart {
+    width:min(88%, 520px); border-radius:10px; border:2px solid #2b3f73;
+    box-shadow:0 10px 34px rgba(0,0,0,.65);
+  }
+  button.cta {
+    font:inherit; font-weight:bold; font-size:clamp(16px, 3.4vw, 22px);
+    background:#57f7ff; color:#04222b; border:none; border-radius:999px;
+    padding:12px 34px; cursor:pointer; box-shadow:0 4px 0 #1d7d8c;
+  }
+  button.cta:active { transform:translateY(2px); box-shadow:0 2px 0 #1d7d8c; }
+  button.ghost {
+    font:inherit; font-weight:bold; font-size:clamp(14px, 2.8vw, 18px);
+    background:transparent; color:#d9f6ff; border:2px solid #2b3f73; border-radius:999px;
+    padding:9px 24px; cursor:pointer;
+  }
+  button.ghost:disabled { opacity:.45; cursor:default; }
+  .btnrow { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .hidden { display:none !important; }
+  #tip { font-size:clamp(12px, 2.4vw, 15px); opacity:.8; text-align:center; max-width:960px; }
+  kbd { background:#1b2547; border-radius:4px; padding:1px 7px; border-bottom:2px solid #0c1124; font-family:inherit; }
+
+  /* customize (skins & trails shop) */
+  .shopgrid { display:flex; flex-direction:column; gap:8px; width:min(92%, 560px); }
+  .shophead { font-size:clamp(13px,2.6vw,16px); letter-spacing:2px; color:#ff5df2; margin-top:4px; }
+  .shopitem {
+    display:flex; align-items:center; gap:12px; text-align:left;
+    background:rgba(19,26,51,.9); border:2px solid #2b3f73; border-radius:12px; padding:8px 14px;
+  }
+  .swatch { width:40px; height:40px; border-radius:50%; flex:none; box-shadow:0 0 14px currentColor; }
+  .shopitem .info { flex:1; }
+  .shopitem .info b { font-size:clamp(14px, 3vw, 18px); }
+  .shopitem .info div { font-size:clamp(12px, 2.4vw, 14px); opacity:.85; line-height:1.35; }
+  .buybtn {
+    font:inherit; font-weight:bold; font-size:clamp(13px, 2.6vw, 16px);
+    background:#57f7ff; color:#04222b; border:none; border-radius:999px; padding:8px 16px; cursor:pointer;
+    white-space:nowrap;
+  }
+  .buybtn:disabled { background:#3a4666; color:#aebadd; cursor:default; }
+  .buybtn.selected { background:#2ec4b6; color:#06251f; }
+  #adveil {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(3,3,10,.72); border-radius:12px; font-size:clamp(16px,3.4vw,22px);
+    color:#d9f6ff; z-index:8;
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div>👻 <span id="sizeVal">14</span></div>
+    <div>🏆 <span id="rankVal">#–</span></div>
+    <div class="spacer"></div>
+    <div id="hudTitle">SPECTER ARENA</div>
+    <div class="spacer"></div>
+    <div>💀 <span id="killVal">0</span></div>
+    <div>⏱ <span id="timeVal">0:00</span></div>
+    <button id="pauseBtn" class="iconbtn" title="Pause (P / Esc)">⏸</button>
+    <button id="muteBtn" class="iconbtn" title="Sound on/off">🔊</button>
+  </div>
+
+  <div id="stage">
+    <canvas id="game" width="960" height="600"></canvas>
+
+    <div id="board" class="hidden">
+      <h3>LEADERBOARD</h3>
+      <ol id="boardList"></ol>
+    </div>
+    <div id="eventMsg"></div>
+    <button id="phaseBtn" class="hidden">◌<br>PHASE</button>
+
+    <div id="adveil" class="hidden">✦ ✦ ✦</div>
+
+    <div id="menu" class="overlay">
+      <img class="coverart" src="assets/cover-clean.png" alt="Specter Arena key art — neon ghosts over a haunted arena">
+      <h1>SPECTER ARENA</h1>
+      <p>You're a ghost in a haunted arena full of hungrier ghosts. Gobble the glowing
+         orbs to grow, hunt the ghosts smaller than you — and run from the ones that aren't.</p>
+      <p>◌ <b>PHASE</b> makes you untouchable and lets you slip through anything…
+         but it <b>burns your size</b> every second you hold it. Escape and suicide are the same button.</p>
+      <div class="btnrow">
+        <button id="startBtn" class="cta">▶ &nbsp;Enter the Arena</button>
+        <button id="customBtn" class="ghost">🎨 Ghosts &amp; Trails</button>
+      </div>
+      <p id="menuBest" class="small"></p>
+      <p class="small">Steer: mouse, <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows, or drag on touch.
+         Phase: hold <kbd>Space</kbd>, hold the mouse button, or hold PHASE.<br>
+         Eat a ghost only when you're clearly bigger. Banked orbs (✦) buy new ghosts and trails — forever.</p>
+    </div>
+
+    <div id="custom" class="overlay hidden">
+      <h2>🎨 Ghosts &amp; Trails</h2>
+      <p class="small">Bank: <b>✦ <span id="customBank">0</span></b> — every orb you eat in the arena is banked when the run ends, plus ✦5 per ghost eaten.</p>
+      <div class="shopgrid" id="customGrid"></div>
+      <div class="btnrow">
+        <button id="customBackBtn" class="ghost">← Back</button>
+        <button id="customPlayBtn" class="cta">▶ &nbsp;Play</button>
+      </div>
+    </div>
+
+    <div id="over" class="overlay hidden">
+      <h2 id="overTitle">Eaten!</h2>
+      <p id="finalStats"></p>
+      <p id="runEcto"></p>
+      <p id="bestLine" class="small"></p>
+      <div class="btnrow">
+        <button id="againBtn" class="cta">↻ &nbsp;One More Run</button>
+        <button id="overMenuBtn" class="ghost">Menu</button>
+      </div>
+    </div>
+
+    <div id="paused" class="overlay hidden">
+      <h2>⏸ Paused</h2>
+      <p class="small">The arena holds its breath…</p>
+      <div class="btnrow">
+        <button id="resumeBtn" class="cta">▶ &nbsp;Resume</button>
+        <button id="pausedMenuBtn" class="ghost">Menu</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tip">Tip: a ghost only ~your size can't eat you — but you can't eat it either. Grow on orbs first, hunt second, phase last.</div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
