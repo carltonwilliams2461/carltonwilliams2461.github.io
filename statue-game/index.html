@@ -3,12 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>STATUE! — a freeze-when-watched museum game</title>
+<title>STATUE! — Haunted Museum</title>
+<meta name="description" content="The museum statues move when nobody is looking. Keep your flashlight on them, grab the gold, and survive all three wings.">
+<!-- CrazyGames SDK v3 — must load before game code. If it fails to load
+     (plain static host / local dev), the game runs fully standalone. -->
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 <style>
   :root { color-scheme: dark; }
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body {
-    background:#14101d; color:#f3ead8;
+    background:#0b0714; color:#f3ead8;
     font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
     height:100%; overflow:hidden;
     -webkit-user-select:none; user-select:none;
@@ -19,624 +23,163 @@
     gap:8px; padding:8px;
   }
   #hud {
-    width:min(96vw, 960px); display:flex; align-items:center; gap:14px;
-    font-size:clamp(14px, 2.6vw, 20px); font-weight:bold;
+    width:min(96vw, 960px); display:flex; align-items:center; gap:12px;
+    font-size:clamp(13px, 2.5vw, 19px); font-weight:bold;
   }
   #hud .spacer { flex:1; }
   #hearts { color:#ff5d7a; letter-spacing:2px; }
+  #levelName { color:#c9a7ff; font-size:clamp(11px, 2.2vw, 16px); letter-spacing:1px; }
+  .iconbtn {
+    background:#2c2144; color:#f3ead8; border:2px solid #4a3566; border-radius:10px;
+    font-size:clamp(14px, 2.6vw, 19px); padding:3px 11px; cursor:pointer; line-height:1.25;
+  }
+  .iconbtn:active { transform:translateY(1px); }
   #timebarOuter {
-    width:min(96vw, 960px); height:10px; background:#2c2440; border-radius:6px; overflow:hidden;
+    width:min(96vw, 960px); height:10px; background:#241a38; border-radius:6px; overflow:hidden;
   }
   #timebar { height:100%; width:100%; background:linear-gradient(90deg,#ffd94d,#ff9d3c); transition:width .2s linear; }
   #stage { position:relative; width:min(96vw, 960px); }
   canvas {
-    display:block; width:100%; aspect-ratio: 960 / 600; background:#241a33;
+    display:block; width:100%; aspect-ratio: 960 / 600; background:#171126;
     border:3px solid #4a3566; border-radius:12px; touch-action:none;
   }
   .overlay {
     position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; background:rgba(16,10,26,.82); border-radius:12px; padding:20px; gap:12px;
+    text-align:center; background:rgba(10,6,20,.86); border-radius:12px; padding:16px; gap:10px;
+    overflow-y:auto;
   }
-  .overlay h1 { font-size:clamp(34px, 8vw, 64px); letter-spacing:2px; color:#ffd94d; text-shadow:0 3px 0 #b97e1e, 0 6px 18px rgba(0,0,0,.6); }
-  .overlay h2 { font-size:clamp(22px, 5vw, 36px); color:#ffd94d; }
-  .overlay p { max-width:520px; line-height:1.45; font-size:clamp(14px, 2.8vw, 18px); }
+  .overlay h1 {
+    font-size:clamp(36px, 8vw, 62px); letter-spacing:2px; color:#ffd94d;
+    text-shadow:0 3px 0 #b97e1e, 0 8px 24px rgba(0,0,0,.8);
+  }
+  .overlay h2 { font-size:clamp(22px, 5vw, 34px); color:#ffd94d; }
+  .overlay p { max-width:560px; line-height:1.45; font-size:clamp(13px, 2.7vw, 17px); }
   .overlay .small { font-size:clamp(12px, 2.4vw, 15px); opacity:.85; }
-  button {
+  .coverart {
+    width:min(88%, 520px); border-radius:10px; border:2px solid #6b4f8f;
+    box-shadow:0 10px 34px rgba(0,0,0,.65);
+  }
+  button.cta {
     font:inherit; font-weight:bold; font-size:clamp(16px, 3.4vw, 22px);
     background:#ffd94d; color:#3a2400; border:none; border-radius:999px;
     padding:12px 34px; cursor:pointer; box-shadow:0 4px 0 #b97e1e;
   }
-  button:active { transform:translateY(2px); box-shadow:0 2px 0 #b97e1e; }
+  button.cta:active { transform:translateY(2px); box-shadow:0 2px 0 #b97e1e; }
+  button.ghost {
+    font:inherit; font-weight:bold; font-size:clamp(14px, 2.8vw, 18px);
+    background:transparent; color:#e8dcff; border:2px solid #6b4f8f; border-radius:999px;
+    padding:9px 24px; cursor:pointer;
+  }
+  button.ghost:disabled { opacity:.45; cursor:default; }
+  .btnrow { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .hidden { display:none !important; }
-  #tip { font-size:clamp(12px, 2.4vw, 15px); opacity:.8; text-align:center; }
+  #tip { font-size:clamp(12px, 2.4vw, 15px); opacity:.8; text-align:center; max-width:960px; }
   kbd { background:#3a2c55; border-radius:4px; padding:1px 7px; border-bottom:2px solid #241a38; font-family:inherit; }
+
+  /* shop */
+  .shopgrid { display:flex; flex-direction:column; gap:10px; width:min(92%, 560px); }
+  .shopitem {
+    display:flex; align-items:center; gap:12px; text-align:left;
+    background:rgba(44,33,68,.85); border:2px solid #4a3566; border-radius:12px; padding:10px 14px;
+  }
+  .shopitem img { width:52px; height:52px; object-fit:contain; }
+  .shopitem .info { flex:1; }
+  .shopitem .info b { font-size:clamp(14px, 3vw, 18px); }
+  .shopitem .info div { font-size:clamp(12px, 2.4vw, 14px); opacity:.85; line-height:1.35; }
+  .pips { color:#ffd94d; letter-spacing:3px; }
+  .buybtn {
+    font:inherit; font-weight:bold; font-size:clamp(13px, 2.6vw, 16px);
+    background:#ffd94d; color:#3a2400; border:none; border-radius:999px; padding:8px 16px; cursor:pointer;
+    white-space:nowrap;
+  }
+  .buybtn:disabled { background:#5a4a77; color:#cfc4e8; cursor:default; }
+  .buybtn.selected { background:#2ec4b6; color:#06251f; }
+  #adveil {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(5,3,10,.72); border-radius:12px; font-size:clamp(16px,3.4vw,22px);
+    color:#e8dcff; z-index:5;
+  }
 </style>
 </head>
 <body>
 <div id="wrap">
   <div id="hud">
-    <div>🪙 <span id="score">0</span></div>
+    <div>⭐ <span id="score">0</span></div>
+    <div>🪙 <span id="bank">0</span></div>
+    <div class="spacer"></div>
+    <div id="levelName">MARBLE HALL</div>
     <div class="spacer"></div>
     <div id="hearts">♥♥♥</div>
-    <div class="spacer"></div>
     <div>⏱ <span id="time">60</span>s</div>
+    <button id="pauseBtn" class="iconbtn" title="Pause (P / Esc)">⏸</button>
+    <button id="muteBtn" class="iconbtn" title="Sound on/off">🔊</button>
   </div>
   <div id="timebarOuter"><div id="timebar"></div></div>
 
   <div id="stage">
     <canvas id="game" width="960" height="600"></canvas>
 
+    <div id="adveil" class="hidden">✦ ✦ ✦</div>
+
     <div id="menu" class="overlay">
+      <img class="coverart" src="assets/cover-clean.png" alt="STATUE! — Haunted Museum key art">
       <h1>STATUE!</h1>
-      <p>The museum statues are alive — but only when nobody's looking.
-         Sneak around, grab the coins, and keep your flashlight eyes on the statues to freeze them.</p>
-      <p>🪙 Coins = 10 pts &nbsp;•&nbsp; ⭐ Star coin = 50 pts &nbsp;•&nbsp; 3 lives &nbsp;•&nbsp; 60 seconds</p>
-      <button id="startBtn">▶ &nbsp;Start</button>
-      <p class="small">Move: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys, or drag on touch screens.<br>
-      Your kid looks the way they walk — statues freeze inside the light cone.</p>
+      <p>The museum statues are alive — and they only move when nobody is looking.
+         Keep your flashlight on them to freeze them, grab the gold, and survive all three wings.</p>
+      <p>🪙 Coin = 10 pts · ⭐ Star = 50 pts · 3 lives · Clear each wing before the clock runs out</p>
+      <div class="btnrow">
+        <button id="startBtn" class="cta">▶ &nbsp;Enter the Museum</button>
+        <button id="shopBtn" class="ghost">🛒 Upgrades &amp; Explorers</button>
+      </div>
+      <p id="menuBest" class="small"></p>
+      <p class="small">Move: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrow keys, or drag on touch screens.
+         Pause: <kbd>P</kbd> or <kbd>Esc</kbd>.<br>
+         You look the way you walk — statues freeze inside your light, and only if you can actually see them.</p>
+    </div>
+
+    <div id="shop" class="overlay hidden">
+      <h2>🛒 Upgrades &amp; Explorers</h2>
+      <p class="small">Spend the gold you grab in the museum. Everything is permanent.</p>
+      <div class="shopgrid" id="shopGrid"></div>
+      <div class="btnrow">
+        <button id="shopBackBtn" class="ghost">← Back</button>
+        <button id="shopPlayBtn" class="cta">▶ &nbsp;Play</button>
+      </div>
+    </div>
+
+    <div id="clear" class="overlay hidden">
+      <h2 id="clearTitle">Wing Cleared!</h2>
+      <p id="clearStats"></p>
+      <div class="btnrow">
+        <button id="nextBtn" class="cta">Next Wing ▶</button>
+        <button id="clearMenuBtn" class="ghost">Menu</button>
+      </div>
     </div>
 
     <div id="over" class="overlay hidden">
-      <h2 id="overTitle">Time's Up!</h2>
+      <h2 id="overTitle">The Statues Got You!</h2>
       <p id="finalScore">Score: 0</p>
+      <p id="runCoins"></p>
       <p id="bestScore" class="small"></p>
-      <button id="againBtn">↻ &nbsp;Play Again</button>
+      <div class="btnrow">
+        <button id="againBtn" class="cta">↻ &nbsp;Play Again</button>
+        <button id="overMenuBtn" class="ghost">Menu</button>
+      </div>
+    </div>
+
+    <div id="paused" class="overlay hidden">
+      <h2>⏸ Paused</h2>
+      <p class="small">The statues are holding their breath…</p>
+      <div class="btnrow">
+        <button id="resumeBtn" class="cta">▶ &nbsp;Resume</button>
+        <button id="pausedMenuBtn" class="ghost">Menu</button>
+      </div>
     </div>
   </div>
 
   <div id="tip">Tip: a statue hiding behind a display case can't be seen — and won't freeze. Watch your corners!</div>
 </div>
 
-<script>
-"use strict";
-/* ============================================================
-   STATUE! — a "freeze when watched" museum game (prototype)
-   Vanilla JS + Canvas, no dependencies.
-   Mechanic: statues move toward the player ONLY while outside
-   the player's facing cone / line of sight (the Dont Blink /
-   weeping-angel rule).
-   ============================================================ */
-
-const W = 960, H = 600;
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
-
-const scoreEl = document.getElementById('score');
-const heartsEl = document.getElementById('hearts');
-const timeEl = document.getElementById('time');
-const timebarEl = document.getElementById('timebar');
-const menuEl = document.getElementById('menu');
-const overEl = document.getElementById('over');
-const overTitleEl = document.getElementById('overTitle');
-const finalScoreEl = document.getElementById('finalScore');
-const bestScoreEl = document.getElementById('bestScore');
-
-/* ---------- HiDPI scaling ---------- */
-function fitCanvas() {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = W * dpr;
-  canvas.height = H * dpr;
-}
-fitCanvas();
-window.addEventListener('resize', fitCanvas);
-
-/* ---------- Tiny WebAudio beeps (no audio files) ---------- */
-let audioCtx = null;
-function beep(freq, dur, type, vol) {
-  try {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.type = type || 'square'; o.frequency.value = freq;
-    g.gain.setValueAtTime(vol || 0.06, audioCtx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
-    o.connect(g); g.connect(audioCtx.destination);
-    o.start(); o.stop(audioCtx.currentTime + dur);
-  } catch (e) { /* audio is optional — never break the game */ }
-}
-const sndCoin = () => { beep(880, .09, 'square', .05); setTimeout(() => beep(1320, .12, 'square', .05), 60); };
-const sndStar = () => { [660, 880, 1100, 1480].forEach((f, i) => setTimeout(() => beep(f, .11, 'triangle', .06), i * 70)); };
-const sndCaught = () => { beep(220, .3, 'sawtooth', .08); setTimeout(() => beep(160, .4, 'sawtooth', .08), 120); };
-
-/* ---------- World layout ---------- */
-// Display cases / pedestals: block movement AND line of sight.
-const OBSTACLES = [
-  { x: 150, y: 130, w: 110, h: 46 },
-  { x: 700, y: 130, w: 110, h: 46 },
-  { x: 150, y: 424, w: 110, h: 46 },
-  { x: 700, y: 424, w: 110, h: 46 },
-  { x: 425, y: 277, w: 110, h: 46 }
-];
-const WALL = 26; // playable margin inside the room frame
-
-const STATUE_SPAWNS = [
-  { x: 90,  y: 90  },
-  { x: 870, y: 90  },
-  { x: 90,  y: 510 },
-  { x: 870, y: 510 }
-];
-
-const VIEW_RANGE = 310;
-const VIEW_HALF = 0.96; // radians (~55°) → 110° cone
-
-/* ---------- Game state ---------- */
-let state = 'menu'; // menu | playing | caught | over
-let score = 0, lives = 3, timeLeft = 60, coinsCollected = 0;
-let caughtTimer = 0, invulnTimer = 0, elapsed = 0;
-let best = 0;
-try { best = parseInt(localStorage.getItem('statueBest') || '0', 10) || 0; } catch (e) {}
-
-const player = { x: W / 2, y: H - 110, r: 15, speed: 235, face: -Math.PI / 2 };
-let statues = [];
-let coin = null;
-let popups = []; // floating score texts {x,y,text,t,life,color}
-
-function makeStatues() {
-  return STATUE_SPAWNS.map((s, i) => ({
-    x: s.x, y: s.y, sx: s.x, sy: s.y, r: 16,
-    speed: 84 + i * 6, observed: false, wobble: Math.random() * Math.PI * 2
-  }));
-}
-
-function resetPositions() {
-  player.x = W / 2; player.y = H - 110; player.face = -Math.PI / 2;
-  statues = makeStatues();
-  invulnTimer = 1.0;
-}
-
-function startGame() {
-  score = 0; lives = 3; timeLeft = 60; coinsCollected = 0; elapsed = 0;
-  popups = [];
-  resetPositions();
-  spawnCoin();
-  state = 'playing';
-  menuEl.classList.add('hidden');
-  overEl.classList.add('hidden');
-  syncHud();
-}
-
-function endGame(reason) {
-  state = 'over';
-  overTitleEl.textContent = reason === 'caught' ? 'The Statues Got You!' : "Time's Up!";
-  finalScoreEl.textContent = 'Score: ' + score;
-  if (score > best) {
-    best = score;
-    try { localStorage.setItem('statueBest', String(best)); } catch (e) {}
-    bestScoreEl.textContent = '🏆 New best score!';
-  } else {
-    bestScoreEl.textContent = 'Best: ' + best;
-  }
-  overEl.classList.remove('hidden');
-}
-
-/* ---------- Geometry helpers ---------- */
-const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
-const dist2 = (ax, ay, bx, by) => { const dx = ax - bx, dy = ay - by; return dx * dx + dy * dy; };
-
-function angleDiff(a, b) {
-  let d = a - b;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return Math.abs(d);
-}
-function segSeg(px, py, qx, qy, rx, ry, sx, sy) {
-  const d1x = qx - px, d1y = qy - py, d2x = sx - rx, d2y = sy - ry;
-  const den = d1x * d2y - d1y * d2x;
-  if (den === 0) return false;
-  const t = ((rx - px) * d2y - (ry - py) * d2x) / den;
-  const u = ((rx - px) * d1y - (ry - py) * d1x) / den;
-  return t >= 0 && t <= 1 && u >= 0 && u <= 1;
-}
-function segHitsRect(x1, y1, x2, y2, r) {
-  if (x1 >= r.x && x1 <= r.x + r.w && y1 >= r.y && y1 <= r.y + r.h) return true;
-  if (x2 >= r.x && x2 <= r.x + r.w && y2 >= r.y && y2 <= r.y + r.h) return true;
-  return segSeg(x1, y1, x2, y2, r.x, r.y, r.x + r.w, r.y) ||
-         segSeg(x1, y1, x2, y2, r.x + r.w, r.y, r.x + r.w, r.y + r.h) ||
-         segSeg(x1, y1, x2, y2, r.x + r.w, r.y + r.h, r.x, r.y + r.h) ||
-         segSeg(x1, y1, x2, y2, r.x, r.y + r.h, r.x, r.y);
-}
-function losClear(x1, y1, x2, y2) {
-  for (const o of OBSTACLES) if (segHitsRect(x1, y1, x2, y2, o)) return false;
-  return true;
-}
-function isObserved(s) {
-  const d = Math.sqrt(dist2(player.x, player.y, s.x, s.y));
-  if (d > VIEW_RANGE) return false;
-  const ang = Math.atan2(s.y - player.y, s.x - player.x);
-  if (angleDiff(ang, player.face) > VIEW_HALF) return false;
-  return losClear(player.x, player.y, s.x, s.y);
-}
-// Push a circle-entity out of obstacles and keep it inside the room.
-function collide(e) {
-  e.x = clamp(e.x, WALL + e.r, W - WALL - e.r);
-  e.y = clamp(e.y, WALL + e.r, H - WALL - e.r);
-  for (const o of OBSTACLES) {
-    const nx = clamp(e.x, o.x, o.x + o.w), ny = clamp(e.y, o.y, o.y + o.h);
-    const dx = e.x - nx, dy = e.y - ny, d2 = dx * dx + dy * dy;
-    if (d2 < e.r * e.r) {
-      if (d2 === 0) { e.y = o.y - e.r; continue; }
-      const d = Math.sqrt(d2), push = (e.r - d) / d;
-      e.x += dx * push; e.y += dy * push;
-    }
-  }
-}
-function pointFree(x, y, pad) {
-  if (x < WALL + pad || x > W - WALL - pad || y < WALL + pad || y > H - WALL - pad) return false;
-  for (const o of OBSTACLES) {
-    if (x > o.x - pad && x < o.x + o.w + pad && y > o.y - pad && y < o.y + o.h + pad) return false;
-  }
-  return true;
-}
-
-/* ---------- Coins ---------- */
-function spawnCoin() {
-  const star = (coinsCollected % 5 === 4); // every 5th coin is a star
-  for (let tries = 0; tries < 200; tries++) {
-    const x = WALL + 30 + Math.random() * (W - 2 * WALL - 60);
-    const y = WALL + 30 + Math.random() * (H - 2 * WALL - 60);
-    if (!pointFree(x, y, 20)) continue;
-    if (dist2(x, y, player.x, player.y) < 90 * 90) continue;
-    let ok = true;
-    for (const s of statues) if (dist2(x, y, s.x, s.y) < 70 * 70) { ok = false; break; }
-    if (!ok) continue;
-    coin = { x, y, r: star ? 15 : 12, star, spin: Math.random() * Math.PI * 2 };
-    return;
-  }
-  coin = { x: W / 2, y: H / 2 - 120, r: 12, star: false, spin: 0 }; // fallback, should not happen
-}
-
-/* ---------- Input ---------- */
-const keys = {};
-window.addEventListener('keydown', e => {
-  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
-  keys[e.key.toLowerCase()] = true;
-  if ((e.key === ' ' || e.key === 'Enter')) {
-    if (state === 'menu') startGame();
-    else if (state === 'over') startGame();
-  }
-});
-window.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
-
-// Touch / mouse joystick: drag anywhere on the canvas to walk.
-const joy = { active: false, id: null, ox: 0, oy: 0, dx: 0, dy: 0 };
-function toLogical(ev) {
-  const r = canvas.getBoundingClientRect();
-  return { x: (ev.clientX - r.left) * W / r.width, y: (ev.clientY - r.top) * H / r.height };
-}
-canvas.addEventListener('pointerdown', ev => {
-  if (state !== 'playing') return;
-  const p = toLogical(ev);
-  joy.active = true; joy.id = ev.pointerId; joy.ox = p.x; joy.oy = p.y; joy.dx = 0; joy.dy = 0;
-  canvas.setPointerCapture(ev.pointerId);
-});
-canvas.addEventListener('pointermove', ev => {
-  if (!joy.active || ev.pointerId !== joy.id) return;
-  const p = toLogical(ev);
-  let dx = p.x - joy.ox, dy = p.y - joy.oy;
-  const len = Math.hypot(dx, dy), max = 55;
-  if (len > max) { dx = dx / len * max; dy = dy / len * max; }
-  joy.dx = dx / max; joy.dy = dy / max;
-});
-function joyEnd(ev) { if (ev.pointerId === joy.id) { joy.active = false; joy.dx = 0; joy.dy = 0; } }
-canvas.addEventListener('pointerup', joyEnd);
-canvas.addEventListener('pointercancel', joyEnd);
-
-document.getElementById('startBtn').addEventListener('click', startGame);
-document.getElementById('againBtn').addEventListener('click', startGame);
-
-function inputVector() {
-  let x = 0, y = 0;
-  if (keys['arrowleft'] || keys['a']) x -= 1;
-  if (keys['arrowright'] || keys['d']) x += 1;
-  if (keys['arrowup'] || keys['w']) y -= 1;
-  if (keys['arrowdown'] || keys['s']) y += 1;
-  if (x === 0 && y === 0 && joy.active) { x = joy.dx; y = joy.dy; }
-  const len = Math.hypot(x, y);
-  if (len > 1) { x /= len; y /= len; }
-  return { x, y };
-}
-
-/* ---------- Update ---------- */
-function update(dt) {
-  // popups always float, in any state
-  for (const p of popups) { p.t += dt; p.y -= 34 * dt; }
-  popups = popups.filter(p => p.t < p.life);
-
-  if (state === 'caught') {
-    caughtTimer -= dt;
-    if (caughtTimer <= 0) {
-      if (lives > 0) { resetPositions(); spawnCoin(); state = 'playing'; }
-      else endGame('caught');
-    }
-    return;
-  }
-  if (state !== 'playing') return;
-
-  elapsed += dt;
-  timeLeft -= dt;
-  if (timeLeft <= 0) { timeLeft = 0; syncHud(); endGame('time'); return; }
-  if (invulnTimer > 0) invulnTimer -= dt;
-
-  // --- player ---
-  const iv = inputVector();
-  if (iv.x !== 0 || iv.y !== 0) {
-    player.x += iv.x * player.speed * dt;
-    player.y += iv.y * player.speed * dt;
-    player.face = Math.atan2(iv.y, iv.x); // you look the way you walk
-  }
-  collide(player);
-
-  // --- statues ---
-  const speedRamp = Math.min(46, elapsed * 0.8 + coinsCollected * 1.5);
-  for (const s of statues) {
-    s.observed = isObserved(s);
-    s.wobble += dt * (s.observed ? 1 : 6);
-    if (!s.observed) {
-      const ang = Math.atan2(player.y - s.y, player.x - s.x);
-      s.x += Math.cos(ang) * (s.speed + speedRamp) * dt;
-      s.y += Math.sin(ang) * (s.speed + speedRamp) * dt;
-      collide(s);
-    }
-  }
-  // gentle separation so statues don't stack into one blob
-  for (let i = 0; i < statues.length; i++) {
-    for (let j = i + 1; j < statues.length; j++) {
-      const a = statues[i], b = statues[j];
-      const d = Math.sqrt(dist2(a.x, a.y, b.x, b.y)), min = a.r + b.r + 4;
-      if (d > 0 && d < min) {
-        const push = (min - d) / 2, ang = Math.atan2(b.y - a.y, b.x - a.x);
-        a.x -= Math.cos(ang) * push; a.y -= Math.sin(ang) * push;
-        b.x += Math.cos(ang) * push; b.y += Math.sin(ang) * push;
-        collide(a); collide(b);
-      }
-    }
-  }
-
-  // --- coin pickup ---
-  if (coin) {
-    coin.spin += dt * 3;
-    if (dist2(player.x, player.y, coin.x, coin.y) < (player.r + coin.r + 2) * (player.r + coin.r + 2)) {
-      const val = coin.star ? 50 : 10;
-      score += val; coinsCollected++;
-      popups.push({ x: coin.x, y: coin.y - 14, text: '+' + val, t: 0, life: 0.9, color: coin.star ? '#ffe066' : '#ffd94d' });
-      if (coin.star) sndStar(); else sndCoin();
-      spawnCoin();
-    }
-  }
-
-  // --- caught? ---
-  if (invulnTimer <= 0) {
-    for (const s of statues) {
-      if (dist2(player.x, player.y, s.x, s.y) < (player.r + s.r - 2) * (player.r + s.r - 2)) {
-        lives--;
-        sndCaught();
-        state = 'caught';
-        caughtTimer = 1.25;
-        break;
-      }
-    }
-  }
-  syncHud();
-}
-
-function syncHud() {
-  scoreEl.textContent = score;
-  heartsEl.textContent = '♥'.repeat(Math.max(0, lives)) + '♡'.repeat(Math.max(0, 3 - lives));
-  timeEl.textContent = Math.ceil(timeLeft);
-  timebarEl.style.width = (timeLeft / 60 * 100) + '%';
-}
-
-/* ---------- Drawing ---------- */
-function drawRoom() {
-  // floor — dark checkerboard “marble”
-  for (let ty = 0; ty < H / 40; ty++) {
-    for (let tx = 0; tx < W / 40; tx++) {
-      ctx.fillStyle = (tx + ty) % 2 ? '#2a2038' : '#31253f';
-      ctx.fillRect(tx * 40, ty * 40, 40, 40);
-    }
-  }
-  // central rug
-  ctx.fillStyle = '#4d2440';
-  ctx.fillRect(W / 2 - 150, H / 2 - 95, 300, 190);
-  ctx.strokeStyle = '#7a3a5e'; ctx.lineWidth = 4;
-  ctx.strokeRect(W / 2 - 150, H / 2 - 95, 300, 190);
-  // walls
-  ctx.strokeStyle = '#191021'; ctx.lineWidth = WALL * 2 - 6;
-  ctx.strokeRect(0, 0, W, H);
-  ctx.strokeStyle = '#6b4f8f'; ctx.lineWidth = 3;
-  ctx.strokeRect(WALL - 4, WALL - 4, W - 2 * WALL + 8, H - 2 * WALL + 8);
-  // paintings on the top wall
-  const frames = [[300, 6], [470, 6], [640, 6]];
-  for (const [fx, fy] of frames) {
-    ctx.fillStyle = '#c9a227'; ctx.fillRect(fx, fy, 70, 30);
-    ctx.fillStyle = '#5e7a9e'; ctx.fillRect(fx + 5, fy + 5, 60, 20);
-    ctx.fillStyle = '#87a96b'; ctx.beginPath();
-    ctx.moveTo(fx + 10, fy + 25); ctx.lineTo(fx + 30, fy + 10); ctx.lineTo(fx + 45, fy + 25); ctx.fill();
-  }
-  // statue spawn pedestals
-  for (const sp of STATUE_SPAWNS) {
-    ctx.fillStyle = '#3d2f52';
-    ctx.beginPath(); ctx.ellipse(sp.x, sp.y + 14, 26, 9, 0, 0, Math.PI * 2); ctx.fill();
-  }
-  // obstacles — glass display cases
-  for (const o of OBSTACLES) {
-    ctx.fillStyle = '#59452a'; ctx.fillRect(o.x - 3, o.y + o.h - 4, o.w + 6, 8); // base
-    ctx.fillStyle = 'rgba(150,200,235,.30)'; ctx.fillRect(o.x, o.y, o.w, o.h);
-    ctx.strokeStyle = '#9fc6e8'; ctx.lineWidth = 2; ctx.strokeRect(o.x, o.y, o.w, o.h);
-    ctx.fillStyle = '#ffd94d'; // the golden doodad inside
-    ctx.beginPath(); ctx.arc(o.x + o.w / 2, o.y + o.h / 2, 8, 0, Math.PI * 2); ctx.fill();
-  }
-}
-
-function drawCone() {
-  const g = ctx.createRadialGradient(player.x, player.y, 10, player.x, player.y, VIEW_RANGE);
-  g.addColorStop(0, 'rgba(255,240,180,.30)');
-  g.addColorStop(1, 'rgba(255,240,180,0)');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.moveTo(player.x, player.y);
-  ctx.arc(player.x, player.y, VIEW_RANGE, player.face - VIEW_HALF, player.face + VIEW_HALF);
-  ctx.closePath(); ctx.fill();
-}
-
-function drawPlayer() {
-  const blink = invulnTimer > 0 && Math.floor(invulnTimer * 10) % 2 === 0;
-  ctx.save();
-  ctx.globalAlpha = blink ? 0.35 : 1;
-  // shadow
-  ctx.fillStyle = 'rgba(0,0,0,.35)';
-  ctx.beginPath(); ctx.ellipse(player.x, player.y + 13, 13, 5, 0, 0, Math.PI * 2); ctx.fill();
-  // body — teal hoodie
-  ctx.fillStyle = '#2ec4b6';
-  ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2); ctx.fill();
-  // backpack
-  ctx.fillStyle = '#ff9f1c';
-  const bx = player.x - Math.cos(player.face) * 9, by = player.y - Math.sin(player.face) * 9;
-  ctx.beginPath(); ctx.arc(bx, by, 7, 0, Math.PI * 2); ctx.fill();
-  // face
-  const fx = player.x + Math.cos(player.face) * 5, fy = player.y + Math.sin(player.face) * 5;
-  ctx.fillStyle = '#ffcf9f';
-  ctx.beginPath(); ctx.arc(fx, fy, 8, 0, Math.PI * 2); ctx.fill();
-  // cap, brim pointing the way he faces
-  ctx.fillStyle = '#e63946';
-  ctx.beginPath(); ctx.arc(fx, fy - 2, 8, Math.PI, Math.PI * 2); ctx.fill();
-  ctx.fillRect(fx + Math.cos(player.face) * 4 - 3, fy - 4, 9, 3.4);
-  // eyes
-  ctx.fillStyle = '#222';
-  const ex = Math.cos(player.face) * 2.4, ey = Math.sin(player.face) * 2.4;
-  const px2 = -Math.sin(player.face) * 3, py2 = Math.cos(player.face) * 3;
-  ctx.beginPath(); ctx.arc(fx + ex + px2, fy + ey + py2, 1.4, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(fx + ex - px2, fy + ey - py2, 1.4, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-}
-
-function drawStatue(s) {
-  const moving = !s.observed && state === 'playing';
-  const bob = moving ? Math.sin(s.wobble) * 1.6 : 0;
-  // shadow
-  ctx.fillStyle = 'rgba(0,0,0,.4)';
-  ctx.beginPath(); ctx.ellipse(s.x, s.y + 15, 14, 5, 0, 0, Math.PI * 2); ctx.fill();
-  // wings
-  ctx.fillStyle = '#aab2c0';
-  ctx.beginPath(); ctx.ellipse(s.x - 13, s.y - 6 + bob, 7, 13, -0.5, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(s.x + 13, s.y - 6 + bob, 7, 13, 0.5, 0, Math.PI * 2); ctx.fill();
-  // robe — stone trapezoid
-  ctx.fillStyle = '#c3c9d4';
-  ctx.beginPath();
-  ctx.moveTo(s.x - 7, s.y - 12 + bob);
-  ctx.lineTo(s.x + 7, s.y - 12 + bob);
-  ctx.lineTo(s.x + 12, s.y + 15);
-  ctx.lineTo(s.x - 12, s.y + 15);
-  ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = '#8f97a5'; ctx.lineWidth = 1.5; ctx.stroke();
-  // head
-  ctx.fillStyle = '#d6dbe3';
-  ctx.beginPath(); ctx.arc(s.x, s.y - 17 + bob, 8.5, 0, Math.PI * 2); ctx.fill();
-  // hair curls
-  ctx.strokeStyle = '#9aa2b0'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(s.x - 4, s.y - 23 + bob, 3, Math.PI, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(s.x + 4, s.y - 23 + bob, 3, Math.PI, Math.PI * 2); ctx.stroke();
-  if (s.observed || state !== 'playing') {
-    // frozen: eyes squeezed shut, harmless
-    ctx.strokeStyle = '#5a6270'; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(s.x - 5, s.y - 17 + bob); ctx.lineTo(s.x - 1.5, s.y - 17 + bob); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(s.x + 1.5, s.y - 17 + bob); ctx.lineTo(s.x + 5, s.y - 17 + bob); ctx.stroke();
-  } else {
-    // unobserved: glowing red eyes — it's coming for you
-    ctx.fillStyle = '#ff3b3b';
-    ctx.beginPath(); ctx.arc(s.x - 3, s.y - 17 + bob, 1.9, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(s.x + 3, s.y - 17 + bob, 1.9, 0, Math.PI * 2); ctx.fill();
-  }
-}
-
-function drawCoin() {
-  if (!coin) return;
-  const pulse = 1 + Math.sin(coin.spin) * 0.08;
-  ctx.save();
-  ctx.translate(coin.x, coin.y);
-  ctx.scale(pulse, pulse);
-  ctx.fillStyle = 'rgba(0,0,0,.3)';
-  ctx.beginPath(); ctx.ellipse(0, coin.r + 3, coin.r * 0.8, 4, 0, 0, Math.PI * 2); ctx.fill();
-  if (coin.star) {
-    ctx.fillStyle = '#ffe066';
-    ctx.strokeStyle = '#d9a400'; ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let i = 0; i < 10; i++) {
-      const ang = -Math.PI / 2 + i * Math.PI / 5;
-      const rad = i % 2 ? coin.r * 0.5 : coin.r;
-      const vx = Math.cos(ang) * rad, vy = Math.sin(ang) * rad;
-      if (i === 0) ctx.moveTo(vx, vy); else ctx.lineTo(vx, vy);
-    }
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-  } else {
-    ctx.fillStyle = '#ffd94d';
-    ctx.strokeStyle = '#d9a400'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(0, 0, coin.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#d9a400';
-    ctx.font = 'bold 13px Trebuchet MS, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('¢', 0, 1);
-  }
-  ctx.restore();
-}
-
-function draw() {
-  ctx.setTransform(canvas.width / W, 0, 0, canvas.height / H, 0, 0);
-  ctx.clearRect(0, 0, W, H);
-  drawRoom();
-  if (state !== 'menu') {
-    drawCoin();
-    drawCone();
-    for (const s of statues) drawStatue(s);
-    drawPlayer();
-  }
-  // popups
-  for (const p of popups) {
-    ctx.globalAlpha = 1 - p.t / p.life;
-    ctx.fillStyle = p.color;
-    ctx.font = 'bold 20px Trebuchet MS, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(p.text, p.x, p.y);
-    ctx.globalAlpha = 1;
-  }
-  // joystick
-  if (joy.active && state === 'playing') {
-    ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(joy.ox, joy.oy, 46, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,.55)';
-    ctx.beginPath(); ctx.arc(joy.ox + joy.dx * 34, joy.oy + joy.dy * 34, 18, 0, Math.PI * 2); ctx.fill();
-  }
-  // CAUGHT! freeze-frame
-  if (state === 'caught') {
-    ctx.fillStyle = 'rgba(200,20,40,.28)';
-    ctx.fillRect(0, 0, W, H);
-    ctx.save();
-    ctx.translate(W / 2, H / 2);
-    ctx.rotate(-0.06);
-    ctx.font = 'bold 84px Trebuchet MS, sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.lineWidth = 10; ctx.strokeStyle = '#5e0a18';
-    ctx.strokeText('CAUGHT!', 0, 0);
-    ctx.fillStyle = '#ffd94d';
-    ctx.fillText('CAUGHT!', 0, 0);
-    ctx.restore();
-  }
-}
-
-/* ---------- Main loop ---------- */
-let lastTs = 0;
-function loop(ts) {
-  const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0);
-  lastTs = ts;
-  update(dt);
-  draw();
-  requestAnimationFrame(loop);
-}
-// Draw an idle scene behind the menu so it isn't a black box.
-resetPositions();
-spawnCoin();
-syncHud();
-requestAnimationFrame(loop);
-</script>
+<script src="game.js"></script>
 </body>
 </html>
