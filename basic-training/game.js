@@ -310,9 +310,12 @@ function makeSprite(w, h, draw) {
   draw(c.getContext('2d'), w, h);
   return c;
 }
-/* The drill sergeant: round brown campaign hat, sunglasses, a face
-   professionally offended by your existence. Parameterized per DS
-   pack (hat band / skin / glasses change; the attitude doesn't). */
+/* The drill sergeant: round brown campaign hat — ALWAYS TILTED,
+   pulled low and tipped forward so the brim's shadow sits on the
+   eyes (Carlton's signature, from real DS reference photos) —
+   sunglasses, a face professionally offended by your existence.
+   Parameterized per DS pack (hat band / skin / glasses change;
+   the attitude doesn't). */
 function drawDSHead(g, w, h, o) {
   const cx = w / 2, skin = o.skin, hat = '#6b4a2a', band = o.band;
   // shoulders + shirt
@@ -365,17 +368,25 @@ function drawDSHead(g, w, h, o) {
     g.strokeStyle = '#5d3423'; g.lineWidth = Math.max(2, w * 0.011);
     g.beginPath(); g.moveTo(cx - w * 0.07, h * 0.645); g.quadraticCurveTo(cx, h * 0.625, cx + w * 0.07, h * 0.645); g.stroke();
   }
-  // campaign hat: crown + wide flat brim (the smokey-bear silhouette)
+  // campaign hat, drawn as one group, lowered and rotated: the tilt
+  g.save();
+  g.translate(cx, h * 0.30); g.rotate(0.055); g.translate(-cx, -h * 0.30);
   g.fillStyle = hat;
-  g.beginPath(); g.ellipse(cx, h * 0.235, w * 0.135, h * 0.115, 0, 0, 7); g.fill();       // crown
-  g.beginPath(); g.ellipse(cx, h * 0.145, w * 0.055, h * 0.028, 0, 0, 7); g.fill();       // crown pinch
-  g.fillStyle = band; g.fillRect(cx - w * 0.128, h * 0.285, w * 0.256, h * 0.035);        // hat band
+  g.beginPath(); g.ellipse(cx, h * 0.252, w * 0.135, h * 0.115, 0, 0, 7); g.fill();       // crown
+  g.beginPath(); g.ellipse(cx, h * 0.162, w * 0.055, h * 0.028, 0, 0, 7); g.fill();       // crown pinch
+  g.fillStyle = band; g.fillRect(cx - w * 0.128, h * 0.30, w * 0.256, h * 0.035);          // hat band
   g.fillStyle = hat;
-  g.beginPath(); g.ellipse(cx, h * 0.335, w * 0.335, h * 0.052, 0, 0, 7); g.fill();       // brim
+  g.beginPath(); g.ellipse(cx, h * 0.35, w * 0.335, h * 0.052, 0, 0, 7); g.fill();         // brim
   g.fillStyle = 'rgba(0,0,0,.16)';
-  g.beginPath(); g.ellipse(cx, h * 0.345, w * 0.335, h * 0.05, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(cx, h * 0.36, w * 0.335, h * 0.05, 0, 0, 7); g.fill();
   g.fillStyle = hat;
-  g.beginPath(); g.ellipse(cx, h * 0.33, w * 0.335, h * 0.048, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(cx, h * 0.345, w * 0.335, h * 0.048, 0, 0, 7); g.fill();
+  g.restore();
+  // the brim's shadow band across the eyes — the menace lives here
+  g.fillStyle = 'rgba(24,12,4,.30)';
+  g.beginPath(); g.ellipse(cx, h * 0.405, w * 0.196, h * 0.08, 0.055, 0, 7); g.fill();
+  g.fillStyle = 'rgba(24,12,4,.15)';
+  g.beginPath(); g.ellipse(cx, h * 0.445, w * 0.188, h * 0.062, 0.055, 0, 7); g.fill();
 }
 function drawRecruit(g, w, h, o) {
   const cx = w / 2;
@@ -761,6 +772,7 @@ function dayComplete() {
     '<span class="small">Tomorrow is faster. It is always faster.</span>';
   el('nextDayBtn').textContent = day === 7 ? 'Enter Drill Mode ➜' : 'Day ' + (day + 1) + ' ➜';
   showOnly('dayend');
+  showWinPop();
 }
 function gameOver() {
   state = 'over';
@@ -920,6 +932,66 @@ function drawFailFlash(g) {
   const lines = wrapLines(g, flash.text, W - 190);
   lines.forEach((ln, i) => g.fillText(ln, W / 2, H - 118 + (lines.length > 1 ? 32 : 50) + i * 34));
   g.textAlign = 'left';
+}
+
+/* ---------------- THE DAY-PASS CADENCE ----------------
+   The win counterpart to the fail flash — Carlton's pair. Passing a
+   Day plays the cadence video (ds-win.mp4) on the day-complete
+   screen: the DS marching the squad in step, calling cadence. The
+   ribbon runs the traditional CALL & RESPONSE chain exactly as
+   dictated: the DS calls a line, the SQUAD answers "YOU'RE RIGHT!"
+   — the response is its own beat, in its own color, never part of
+   the call. This "when you left" chain is the primary cadence and
+   stays intact, in this order. Stomp drums underneath are
+   synthesized in the same WebAudio kit as everything else. Tap the
+   video to skip it; the poster still (ds-win.jpg) is the fallback
+   if the clip can't play. */
+const CADENCE_CHAIN = [
+  { who: 'DS', text: 'YOUR MAMA WAS HOME WHEN YOU LEFT!' },
+  { who: 'SQUAD', text: "YOU'RE RIGHT!" },
+  { who: 'DS', text: 'YOUR DADDY WAS HOME WHEN YOU LEFT!' },
+  { who: 'SQUAD', text: "YOU'RE RIGHT!" },
+  { who: 'DS', text: 'YOUR MAMA, YOUR DADDY, THE DOG, THE CAT, THE RAT WERE ALL HOME WHEN YOU LEFT!' },
+  { who: 'SQUAD', text: "YOU'RE RIGHT! YOU'RE RIGHT!" }
+];
+const winPop = { active: false, step: 0, t: 0, beat: 0 };
+function cadenceStomp(big) {
+  tone(95, 0.13, 'sine', big ? 0.24 : 0.15, 44);
+  noiseBurst(0.05, big ? 0.10 : 0.06, 900, 'lowpass');
+}
+function advanceCadence() {
+  winPop.step = (winPop.step + 1) % CADENCE_CHAIN.length;
+  const line = CADENCE_CHAIN[winPop.step];
+  const who = el('cadenceWho'), txt = el('cadenceText');
+  if (who) { who.textContent = line.who === 'DS' ? '🗣️ DS' : '📣 SQUAD'; who.className = line.who === 'DS' ? 'whoDs' : 'whoSquad'; }
+  if (txt) txt.textContent = line.text;
+  if (line.who === 'DS') SFX.bark(2);
+}
+function showWinPop() {
+  const pop = el('winPop'), v = el('winVid');
+  if (pop) pop.classList.remove('hidden');
+  winPop.active = true; winPop.step = -1; winPop.t = 0; winPop.beat = 0;
+  advanceCadence();
+  if (v) {
+    try { v.currentTime = 0; } catch (e) {}
+    if (typeof v.play === 'function') { try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
+  }
+}
+function stopWinPop() {
+  if (!winPop.active) return;
+  winPop.active = false;
+  const pop = el('winPop'), v = el('winVid');
+  if (pop) pop.classList.add('hidden');
+  if (v && typeof v.pause === 'function') { try { v.pause(); } catch (e) {} }
+}
+function updateWinPop(dt) {
+  if (!winPop.active) return;
+  if (state !== 'dayend') { stopWinPop(); return; }
+  winPop.t += dt;
+  const stepDur = CADENCE_CHAIN[winPop.step].text.length > 40 ? 1.5 : 0.95;
+  if (winPop.t >= stepDur) { winPop.t = 0; advanceCadence(); }
+  winPop.beat += dt;
+  if (winPop.beat >= 0.48) { winPop.beat = 0; cadenceStomp(winPop.step % 2 === 0); }
 }
 
 /* ---------------- OFF THE BUS ---------------- */
@@ -1549,6 +1621,7 @@ function frame(ts) {
     bannerT -= dt;
     if (bannerT <= 0) { hideBanner(); beginEvent(plan[0]); CG.gameplayStart(); }
   } else if (state === 'event') updateEvent(dt);
+  updateWinPop(dt);
   if (flash.active) {
     flash.t -= dt;
     if (flash.t <= 0) flash.active = false;
@@ -1630,6 +1703,7 @@ el('quitBtn').addEventListener('click', quitToMenu);
 el('muteBtn').addEventListener('click', () => { save.muted = !save.muted; persist(); updateMute(); });
 el('nextDayBtn').addEventListener('click', () => { showOnly(null); CG.midgameAd(() => startDay(day + 1)); });
 el('dayMenuBtn').addEventListener('click', quitToMenu);
+el('winVid').addEventListener('click', () => { SFX.click(); stopWinPop(); });
 el('againBtn').addEventListener('click', () => { SFX.click(); startRun(); });
 el('overMenuBtn').addEventListener('click', quitToMenu);
 el('tutX').addEventListener('click', skipTutorial);
@@ -1667,5 +1741,7 @@ window.__bt = {
   tutActiveFor,
   FAIL_FLASH_BARKS,
   flashState() { return { active: flash.active, t: flash.t, text: flash.text, bankRemaining: Array.isArray(save.barkBag) ? save.barkBag.length : 0 }; },
-  triggerFailFlash
+  triggerFailFlash,
+  CADENCE_CHAIN, showWinPop, stopWinPop,
+  winState() { const l = CADENCE_CHAIN[winPop.step]; return { active: winPop.active, step: winPop.step, who: l ? l.who : null, text: l ? l.text : '' }; }
 };
