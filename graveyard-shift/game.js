@@ -64,12 +64,12 @@ const OFFLINE_CAP_SEC = 8 * 3600;      // offline earnings cap: 8 hours
 const SAVE_KEY = 'graveyardSaveV1';
 function defaultSave() {
   return {
-    bones: 80, night: 1, bestNight: 0, shards: 0, milestones: 0,
+    bones: 100, night: 1, bestNight: 0, shards: 0, milestones: 0,
     turrets: [],                        // {col, lane, type, lvl}
     upg: { light: 0, shovel: 0, gate: 0, bunks: 0, hustle: 0 },
     workers: 0,
     stats: { kills: 0, purified: 0, nights: 0, earned: 0 },
-    muted: false, lastSeen: 0, started: false
+    muted: false, lastSeen: 0, started: false, tutDone: false, tutStep: 0
   };
 }
 let save = defaultSave();
@@ -93,8 +93,13 @@ try {
     save.muted = !!raw.muted;
     save.lastSeen = Math.max(0, +raw.lastSeen || 0);
     save.started = !!raw.started;
+    save.tutDone = !!raw.tutDone;
+    save.tutStep = clamp(raw.tutStep | 0, 0, 5);
   }
 } catch (e) { /* corrupted save -> defaults */ }
+/* Anyone who has already built a turret is not a new player: the
+   first-night tutorial (below) only ever runs for brand-new saves. */
+if (save.started) save.tutDone = true;
 function persist() { save.lastSeen = Date.now(); lsSet(SAVE_KEY, JSON.stringify(save)); }
 
 /* ---------------- derived economy ---------------- */
@@ -293,8 +298,9 @@ const bonesEl = $('bones'), nightEl = $('nightLbl'), waveEl = $('waveLbl'),
   phaseEl = $('phaseLbl'), callWaveBtn = $('callWaveBtn'), toastEl = $('toast'), bannerEl = $('banner');
 const menuEl = $('menu'), awayEl = $('away'), buildEl = $('buildSheet'), turretEl = $('turretSheet'),
   upgEl = $('upgrades'), summaryEl = $('summary'), prestigeEl = $('prestige'), overEl = $('over'),
-  pausedEl = $('paused'), adveilEl = $('adveil');
-const OVERLAYS = [menuEl, awayEl, upgEl, summaryEl, prestigeEl, overEl, pausedEl];
+  pausedEl = $('paused'), adveilEl = $('adveil'), howtoEl = $('howto');
+const tutBarEl = $('tutBar'), tutTextEl = $('tutText');
+const OVERLAYS = [menuEl, awayEl, upgEl, summaryEl, prestigeEl, overEl, pausedEl, howtoEl];
 function setAdVeil(on) { adveilEl.classList.toggle('hidden', !on); }
 function showOnly(el) { for (const o of OVERLAYS) o.classList.toggle('hidden', o !== el); }
 function closeSheets() { buildEl.classList.add('hidden'); turretEl.classList.add('hidden'); sel = null; }
@@ -313,6 +319,56 @@ function banner(msg, ms) {
   bannerTimer = setTimeout(() => bannerEl.classList.remove('show'), ms || 1600);
 }
 
+/* ---------------- first-night tutorial ----------------
+   A dismissible guided sequence for brand-new players only
+   (save.tutDone / save.tutStep persist in the save). Steps:
+   0 tap a plot -> 1 build a Lantern -> 2 first kill income ->
+   3 bones buy more -> 4 Holy Sprinkler -> 5 Purifier/workers.
+   The prompt bar never blocks input (pointer-events only on the
+   ✕ button), and a pulsing ring / card glow points at the target. */
+function setTutStep(n) { if (n === tutStep) return; tutStep = n; save.tutStep = n; persist(); }
+function finishTut() {
+  if (save.tutDone) return;
+  save.tutDone = true;
+  save.tutStep = tutStep;
+  persist();
+  tutBarEl.classList.add('hidden');
+}
+function tutPrompt() {
+  if (save.tutDone || state !== 'playing') return null;
+  const sheetOpen = !buildEl.classList.contains('hidden');
+  switch (tutStep) {
+    case 0: return { text: '👆 Tap a glowing plot to build!', ring: !sheetOpen };
+    case 1: return { text: '🏮 Start with a Lantern Post', ring: false };
+    case 2: return { text: '💀 Kills pay 🦴 Bones — watch it work!', ring: false };
+    case 3: return { text: '🦴 Bones buy turrets — tap another plot', ring: !sheetOpen };
+    case 4: return { text: '💦 Holy Sprinkler splashes groups — try one!', ring: !sheetOpen };
+    case 5: return { text: '🏆 Purifier turns zombies into Bone Mill workers — earning forever!', ring: !sheetOpen };
+  }
+  return null;
+}
+function syncTutBar() {
+  const p = tutPrompt();
+  if (!p) { tutBarEl.classList.add('hidden'); return; }
+  tutBarEl.classList.remove('hidden');
+  if (tutTextEl.textContent !== p.text) tutTextEl.textContent = p.text;
+}
+function tutTick() {
+  if (save.tutDone) { tutBarEl.classList.add('hidden'); return; }
+  if (state === 'playing') {
+    if (hasTurret('purifier')) { finishTut(); return; }   // figured it out solo — done
+    const sheetOpen = !buildEl.classList.contains('hidden');
+    if (tutStep <= 1 && save.turrets.length >= 1) setTutStep(2);   // built (even between frames) — move on
+    else if (tutStep === 0 && sheetOpen) setTutStep(1);
+    else if (tutStep === 1 && !sheetOpen) setTutStep(0);
+    else if (tutStep === 2 && (nightKills > 0 || save.stats.kills > 0)) setTutStep(3);
+    else if (tutStep === 3 && hasTurret('sprinkler')) setTutStep(5);
+    else if (tutStep === 3 && Math.floor(save.bones) >= TURRETS.sprinkler.cost) setTutStep(4);
+    else if (tutStep === 4 && (hasTurret('sprinkler') || Math.floor(save.bones) >= TURRETS.purifier.cost)) setTutStep(5);
+  }
+  syncTutBar();
+}
+
 /* ---------------- runtime state ---------------- */
 let state = 'menu';            // menu | playing | summary | over | paused
 let prePause = 'playing';
@@ -327,11 +383,13 @@ let floaters = [];             // floating text (+5 🦴 etc.)
 let turretState = new Map();   // "col,lane" -> {cd, channelTarget, channelT, bellSwing}
 let gateHp = 100;
 let sel = null;                // selected plot {col, lane} or turret ref
+let tutStep = clamp(save.tutStep | 0, 0, 5);   // first-night tutorial step (persisted)
 let nightKills = 0, nightPurified = 0, nightEarned = 0;
 let elapsed = 0;               // run time (s) for idle scene anim
 let persistT = 0;
 const keyOf = (col, lane) => col + ',' + lane;
 const turretAt = (col, lane) => save.turrets.find(t => t.col === col && t.lane === lane) || null;
+const hasTurret = type => save.turrets.some(t => t.type === type);
 const plotPos = (col, lane) => ({ x: PLOT_X[col], y: LANES[lane] - 56 });
 
 /* ---------------- pre-rendered sprites ----------------
@@ -502,6 +560,7 @@ function pickZombieType() {
   return 'shambler';
 }
 function startNight(fromMenu) {
+  if (save.night >= 3 && !save.tutDone) finishTut();   // well past the lessons by Night 3
   closeSheets();
   showOnly(null);
   state = 'playing';
@@ -551,6 +610,7 @@ function callWaveEarly() {
 }
 function nightComplete() {
   phase = 'done';
+  if (save.night === 1 && !save.tutDone && tutStep < 5) setTutStep(5);   // Night 1 held: the Purifier lesson is due
   // purified zombies still strolling to the Mill check in at dawn
   for (const z of zombies) {
     if (z.state === 'purified' && !z.dead) {
@@ -603,6 +663,7 @@ function doPrestige() {
   fresh.shards = save.shards; fresh.milestones = save.milestones;
   fresh.stats = keepStats; fresh.muted = keepMuted; fresh.started = true;
   fresh.bestNight = save.bestNight;
+  fresh.tutDone = save.tutDone; fresh.tutStep = save.tutStep;
   save = fresh;
   turretState.clear();
   persist();
@@ -750,6 +811,7 @@ function update(dt) {
   parts = parts.filter(p => p.t < p.life);
   for (const f of floaters) { f.t += dt; f.y -= 34 * dt; }
   floaters = floaters.filter(f => f.t < 1.15);
+  tutTick();
   if (state !== 'playing') return;
 
   // worker income ticks continuously
@@ -982,6 +1044,7 @@ function drawGate() {
   ctx.fillText('THE GATE', GATE_X + 28, 284);
 }
 function drawPlots() {
+  const canAfford = Math.floor(save.bones) >= TURRETS.lantern.cost;   // cheapest build — gates the plot pulse
   for (let lane = 0; lane < 3; lane++) for (let col = 0; col < 4; col++) {
     const p = plotPos(col, lane);
     const t = turretAt(col, lane);
@@ -990,12 +1053,14 @@ function drawPlots() {
     rr(ctx, p.x - 30, p.y + 26, 60, 14, 5); ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,.07)'; rr(ctx, p.x - 30, p.y + 26, 60, 5, 3); ctx.fill();
     if (!t) {
-      const pulse = 0.5 + 0.3 * Math.sin(elapsed * 2.4 + (col + lane));
+      // empty plots pulse invitingly only while the player can afford a build;
+      // otherwise they sit dim so nobody waits on a glow they can't use
+      const pulse = canAfford ? 0.5 + 0.3 * Math.sin(elapsed * 2.4 + (col + lane)) : 0.16;
       ctx.strokeStyle = 'rgba(255,215,106,' + pulse + ')'; ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       rr(ctx, p.x - 26, p.y - 34, 52, 58, 8); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(255,233,168,.85)'; ctx.font = 'bold 17px system-ui'; ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(255,233,168,' + (canAfford ? 0.85 : 0.3) + ')'; ctx.font = 'bold 17px system-ui'; ctx.textAlign = 'center';
       ctx.fillText('＋', p.x, p.y + 6);
     }
     if (sel && sel.col === col && sel.lane === lane) {
@@ -1083,6 +1148,7 @@ function draw() {
   drawMill();
   drawGate();
   drawPlots();
+  drawTutRing();
   for (const t of save.turrets) drawTurret(t);
   // zombies sorted by lane then depth
   const sorted = [...zombies].sort((a, b) => (a.lane - b.lane) || ((a.laneY || 0) - (b.laneY || 0)));
@@ -1127,6 +1193,28 @@ function draw() {
   ctx.globalAlpha = 1;
 }
 
+/* Tutorial pointing ring: a pulsing gold ellipse + bouncing 👇 over the
+   first empty plot (middle lane first) while the current step wants a build. */
+function drawTutRing() {
+  const p = tutPrompt();
+  if (!p || !p.ring) return;
+  let tgt = null;
+  for (const lane of [1, 0, 2]) {
+    for (let col = 0; col < 4; col++) if (!turretAt(col, lane)) { tgt = { col, lane }; break; }
+    if (tgt) break;
+  }
+  if (!tgt) return;
+  const pp = plotPos(tgt.col, tgt.lane);
+  const pulse = 1 + 0.08 * Math.sin(elapsed * 5);
+  ctx.save();
+  ctx.strokeStyle = '#ffd76a'; ctx.lineWidth = 3.4;
+  ctx.shadowColor = '#ffd76a'; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.ellipse(pp.x, pp.y - 6, 40 * pulse, 44 * pulse, 0, 0, 7); ctx.stroke();
+  ctx.font = '22px system-ui'; ctx.textAlign = 'center';
+  ctx.fillText('👇', pp.x, pp.y - 62 + Math.sin(elapsed * 5) * 5);
+  ctx.restore();
+}
+
 /* ---------------- build / upgrade UI ---------------- */
 function openBuildSheet(col, lane) {
   sel = { col, lane };
@@ -1135,11 +1223,19 @@ function openBuildSheet(col, lane) {
   for (const type of TURRET_ORDER) {
     const c = TURRETS[type];
     const cost = turretCost(type, 1);
+    const afford = Math.floor(save.bones) >= cost;
     const b = document.createElement('button');
     b.className = 'card';
     b.innerHTML = '<div class="tname">' + c.icon + ' ' + c.name + '</div>' +
-      '<div class="tcost">🦴 ' + cost + '</div><div class="tdesc">' + c.desc + '</div>';
-    b.disabled = Math.floor(save.bones) < cost;
+      '<div class="tcost' + (afford ? '' : ' cant') + '">🦴 ' + cost +
+      (afford ? '' : ' · Need ' + (cost - Math.floor(save.bones)) + ' more') +
+      '</div><div class="tdesc">' + c.desc + '</div>';
+    b.disabled = !afford;
+    if (!afford) b.classList.add('cant');
+    if (!save.tutDone && ((type === 'lantern' && tutStep <= 1) ||
+        (type === 'sprinkler' && tutStep === 4) || (type === 'purifier' && tutStep === 5))) {
+      b.classList.add('tut-glow');
+    }
     b.addEventListener('click', () => { buildTurret(type); });
     wrap.appendChild(b);
   }
@@ -1292,6 +1388,9 @@ function syncMenu() {
 
 /* ---------------- wiring ---------------- */
 $('playBtn').addEventListener('click', () => { ensureAudio(); startNight(true); });
+$('howBtn').addEventListener('click', () => { sndClick(); showOnly(howtoEl); });
+$('howClose').addEventListener('click', () => { sndClick(); showOnly(menuEl); });
+$('tutX').addEventListener('click', () => { sndClick(); finishTut(); });
 $('awayCollectBtn').addEventListener('click', () => {
   const amt = awayEl.dataset.amount | 0;
   if (amt > 0) { grantBones(amt, false); sndCoin(); }
@@ -1337,7 +1436,7 @@ $('nextNightBtn').addEventListener('click', () => {
 $('sumMenuBtn').addEventListener('click', () => { save.night++; persist(); toMenu(); });
 $('prestigeBtn').addEventListener('click', () => {
   const g = prestigeGain();
-  $('prestigeText').innerHTML = 'Reset to Night 1: turrets sold, upgrades and crew released, bones back to 🦴 80.<br>' +
+  $('prestigeText').innerHTML = 'Reset to Night 1: turrets sold, upgrades and crew released, bones back to 🦴 100.<br>' +
     'In return: <b>+' + g + ' 🌟 Moon Shards</b> — every shard is a permanent <b>+20% bones</b> and <b>+15% damage</b>, forever.';
   showOnly(prestigeEl);
 });
@@ -1408,6 +1507,10 @@ window.GRAVEYARD = {
   get gateHp() { return gateHp; },
   get zombies() { return zombies; },
   get save() { return save; },
+  get tutStep() { return tutStep; },
+  get tutDone() { return save.tutDone; },
+  tutPromptText() { const p = tutPrompt(); return p ? p.text : null; },
+  finishTut, openBuildSheet, closeSheets,
   startNight, beginWave, callWaveEarly, nightComplete, doPrestige, prestigeGain,
   buildTurret, grantBones, spawnZombie, damageZombie, tapZombie, purifyZombie,
   offlineEarned, offlineEarnedFor, workerRate, workerCap, maxGateHp, tapDmg,

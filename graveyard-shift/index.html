@@ -118,7 +118,7 @@
   .upg button:disabled { opacity:.45; cursor:default; }
 
   #toast {
-    position:absolute; left:50%; top:14px; transform:translateX(-50%);
+    position:absolute; left:50%; top:74px; transform:translateX(-50%);
     background:rgba(10,16,26,.94); border:2px solid #ffd76a; color:#ffe9a8; font-weight:bold;
     border-radius:999px; padding:7px 20px; font-size:clamp(13px, 2.6vw, 17px); pointer-events:none;
     opacity:0; transition:opacity .25s; max-width:92%; text-align:center; z-index:5;
@@ -131,6 +131,37 @@
     opacity:0; transition:opacity .3s; z-index:4;
   }
   #banner.show { opacity:1; }
+
+  /* first-night tutorial prompt — floats over the sky, never blocks play
+     (pointer-events off except the 42px skip button) */
+  #tutBar {
+    position:absolute; left:50%; top:10px; transform:translateX(-50%); z-index:6;
+    display:flex; align-items:center; gap:8px; max-width:94%;
+    background:rgba(10,16,26,.95); border:2px solid #ffd76a; border-radius:999px;
+    padding:6px 8px 6px 20px; color:#ffe9a8; font-weight:bold;
+    font-size:clamp(14px, 2.8vw, 19px); pointer-events:none;
+    box-shadow:0 6px 22px rgba(0,0,0,.5);
+  }
+  #tutText { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #tutX {
+    pointer-events:auto; flex:none; width:42px; height:42px; border-radius:50%;
+    border:2px solid #3a5a74; background:#1d2a38; color:#eef3e2;
+    font-size:19px; font-weight:bold; cursor:pointer; line-height:1;
+  }
+  #tutX:active { transform:translateY(1px); }
+
+  /* build-card affordability + tutorial glow */
+  .card.cant { border-color:#6b3a3a; }
+  .card .tcost.cant { color:#ff9a86; }
+  .card.tut-glow { border-color:#ffd76a; animation:tutPulse .9s ease-in-out infinite; }
+  @keyframes tutPulse {
+    0%, 100% { box-shadow:0 0 0 0 rgba(255,215,106,0); }
+    50% { box-shadow:0 0 20px 5px rgba(255,215,106,.55); }
+  }
+
+  /* how-to-play panel */
+  .howlist { display:flex; flex-direction:column; gap:8px; text-align:left; }
+  .howlist p { font-size:clamp(14px, 2.8vw, 18px); }
 </style>
 </head>
 <body>
@@ -157,6 +188,7 @@
     <canvas id="game" width="960" height="600"></canvas>
     <div id="banner"></div>
     <div id="toast"></div>
+    <div id="tutBar" class="hidden"><span id="tutText"></span><button id="tutX" title="Skip tutorial" aria-label="Skip tutorial">✕</button></div>
 
     <!-- MAIN MENU -->
     <div class="overlay" id="menu">
@@ -164,9 +196,26 @@
       <p>The dead rise at midnight — and your turrets work the night shift so you don't have to.
          Hold the gate, tap zombies for bonus damage, and <b>purify</b> the lucky ones into your
          Bone Mill crew: they earn 🦴 for you forever, even while you're away.</p>
-      <button class="cta" id="playBtn">🌙 Start Night 1</button>
+      <div class="btnrow">
+        <button class="cta" id="playBtn">🌙 Start Night 1</button>
+        <button class="ghost" id="howBtn">❓ How to Play</button>
+      </div>
       <p class="small" id="menuStats"></p>
       <p class="small">Click a stone plot to build · Click a zombie to bonk it · <kbd>P</kbd> pause · <kbd>M</kbd> mute</p>
+    </div>
+
+    <!-- HOW TO PLAY -->
+    <div class="overlay hidden" id="howto">
+      <h2>❓ How to Play</h2>
+      <div class="howlist">
+        <p>🪦 Tap a stone plot to <b>build</b> turrets.</p>
+        <p>👆 Tap zombies to <b>bonk</b> them for 🦴.</p>
+        <p>🏆 <b>Purifiers</b> turn zombies into Mill workers.</p>
+        <p>⚰️ Workers earn 🦴 even while you're <b>away</b>.</p>
+        <p>🌙 Survive every wave until <b>dawn</b>.</p>
+        <p>🌟 Every 5 nights: <b>New Moon</b> = permanent boosts.</p>
+      </div>
+      <button class="cta" id="howClose">Got it!</button>
     </div>
 
     <!-- WHILE YOU WERE GONE -->
