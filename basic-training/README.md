@@ -38,9 +38,10 @@ The fail-flash face is drawn in code — no image file).
 - **A Training Day** is a run of timed micro-events ("orders"). Each one:
   the DS screams the order in a speech bubble (+ synth bark), then you have
   **3–6 seconds** to do exactly that. Success builds your **Squared-Away
-  meter** (+8) and your streak; a blown order drains the meter (−22) and
-  drops you into the push-up beat. Meter at zero = **RECYCLED** — run over,
-  back to Day 1.
+  meter** (+8) and your streak; a blown order drains the meter (−22;
+  **−14 on Day 1** — reception day runs a training drain, see the
+  cadence section) and drops you into the push-up beat. Meter at zero =
+  **RECYCLED** — run over, back to Day 1.
 - **The 8 events:** 🚌 **Off the Bus** (tap YOUR duffel — the ★-tagged one —
   then hit the door) · 👣 **Get on the Line** (stand on YOUR roster number)
   · 🦈 **Shark Attack** (two DSs shout contradictory orders — obey the
@@ -157,6 +158,31 @@ itself — audio included — when you leave the day-complete screen. Mute
 (in-game toggle or the portal's `muteAudio`) silences barks and cadence
 together; where no Audio exists at all, the old synth bark/stomps remain
 as the fallback.
+
+**FRONT-DOOR CADENCE (added at Carlton's word — he loved the moment
+but could never reach it):** the main menu and How to Play both carry
+a **🎖️ Hear the Cadence** button that plays this exact presentation
+on demand. It is the *same* pop, not a copy: `showMenuCadence()`
+re-homes the `winPop` element into a stage-level slot (`#winPopSlot`,
+outside the scrollable menu overlay, where it floats as a centered
+card over the dimmed menu via the `#winPopSlot #winPop` CSS), calls
+the unchanged `showWinPop()`, and `stopWinPop()` returns the element
+to its day-end home slot (`#winPopSlotHome`) whichever way the show
+ends — video tap (skip), button toggle, or leaving the menu. Same
+video, same recorded chain, same ribbon sync, same mute rules; no
+save, progress or day flow is touched, and the day-pass pop is
+verified unchanged after menu use.
+
+**Day-1 reachability audit (same round):** Day 1 is 5 authored
+events; the meter starts at 60, passes pay +8, and at the old −22
+drain three cold mistakes in a row (60 → 38 → 16 → −6) recycled a
+first-time player before he'd seen the whole day — and *any* 4 fails
+ended the run in every order. Day 1 now drains **14** per blown
+order (`failDrain()`, Day 1 only): three straight fails leave 18 and
+the day finishes, 4 fails + 1 obeyed order pass at 12, and only
+blowing **all five** orders still recycles (60 − 5×14 < 0). Days 2+
+and Drill Mode keep the full −22, verified behaviorally in the smoke
+suite (World 9).
 
 ## THE PUSH-UP RECRUIT
 

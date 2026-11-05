@@ -106,6 +106,18 @@
   #cadenceWho.whoDs { color:#ffd94d; }
   #cadenceWho.whoSquad { color:#8be0a4; }
   #winPop .skipHint { text-align:center; margin-top:4px; }
+  /* front-door cadence: borrowed into the stage-level slot, the
+     same pop floats as a centered card over the menu (in its day-end home it
+     stays in flow, exactly as before). The giant shadow spread dims
+     the menu behind it; the video height is capped so the whole
+     card — ribbon included — fits short landscape screens. */
+  #winPopSlot #winPop {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:min(600px, 94%); max-width:600px; z-index:40; margin:0;
+    background:#171d12; border:2px solid #ffd94d; border-radius:14px; padding:10px 10px 6px;
+    box-shadow:0 0 0 9999px rgba(0,0,0,.55), 0 18px 50px rgba(0,0,0,.65);
+  }
+  #winPopSlot #winVid { max-height:44vh; object-fit:contain; }
   kbd { background:#3a4028; border-radius:4px; padding:1px 7px; border-bottom:2px solid #14160a; font-family:inherit; }
   .upglist { display:flex; flex-direction:column; gap:9px; width:min(94%, 640px); }
   .upg {
@@ -229,6 +241,7 @@
         <button class="cta" id="playBtn">🚌 Get Off the Bus</button>
         <button class="ghost" id="shopBtnMenu">🛒 Shop</button>
         <button class="ghost" id="howBtn">❓ How to Play</button>
+        <button class="ghost" id="cadenceBtnMenu">🎖️ Hear the Cadence</button>
       </div>
       <p class="small" id="menuStats"></p>
       <p class="small">Tap, drag and HOLD STILL when told · <kbd>P</kbd> pause · <kbd>M</kbd> mute</p>
@@ -244,8 +257,12 @@
         <p>🤐 When he says <b>DON'T MOVE</b> — don't. No tapping, no wiggling the mouse. Nothing.</p>
         <p>🎖️ In a Shark Attack, two sergeants lie to you. Obey the <b>senior DS (★)</b> — his <b>last</b> order wins.</p>
         <p>📅 Survive Days 1–7 to <b>graduate</b>. After that, Drill Mode never ends and never slows down.</p>
+        <p>🎖️ Pass a day and the squad marches out, calling <b>cadence</b> — the DS calls, the squad answers. Can't wait? Hear it right now:</p>
       </div>
-      <button class="cta" id="howClose">Got it!</button>
+      <div class="btnrow">
+        <button class="ghost" id="cadenceBtnHow">🎖️ Hear the Cadence</button>
+        <button class="cta" id="howClose">Got it!</button>
+      </div>
     </div>
 
     <!-- SHOP -->
@@ -264,10 +281,12 @@
     <!-- DAY COMPLETE -->
     <div class="overlay hidden" id="dayend">
       <h2 id="dayEndTitle">DAY 1 COMPLETE</h2>
+      <div id="winPopSlotHome">
       <div id="winPop" class="hidden">
         <video id="winVid" src="ds-win.mp4" poster="ds-win.jpg" muted loop playsinline preload="auto"></video>
         <div id="cadenceRibbon"><span id="cadenceWho" class="whoDs">🗣️ DS</span><span id="cadenceText"></span></div>
         <p class="small skipHint">Tap the video to skip ⏩</p>
+      </div>
       </div>
       <p id="dayEndStats"></p>
       <div class="btnrow">
@@ -295,6 +314,11 @@
         <button class="ghost" id="overMenuBtn">Menu</button>
       </div>
     </div>
+
+    <!-- front-door cadence slot: lives OUTSIDE the scrollable menu
+         overlay (a child of the stage) so the borrowed winPop card
+         centers on the stage itself, scroll-proof -->
+    <div id="winPopSlot"></div>
   </div>
   <div id="rotateHint" class="hidden">↻ Rotate your phone for a bigger view</div>
 </div>

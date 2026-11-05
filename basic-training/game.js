@@ -859,6 +859,17 @@ function nextEvent() {
   if (planIdx >= plan.length) { dayComplete(); return; }
   beginEvent(plan[planIdx]);
 }
+/* Blown-order drain. The standard cost is 22 Squared-Away — but
+   Day 1 runs a training drain of 14. Day-1 reachability audit
+   (start 60, 5 events, pass +8): at 22, three cold mistakes in a
+   row — 60 → 38 → 16 → −6 — recycled a brand-new private before
+   he ever saw the whole day, let alone the cadence waiting at the
+   end of it; ANY 4 fails killed the run in every order. At 14,
+   three straight fails leave 18 and the day still finishes, four
+   fails + one obeyed order squeak through at 12, and only blowing
+   ALL five orders (60 − 5×14 < 0) still recycles. Reception day
+   teaches; it doesn't execute. Days 2+ and Drill Mode keep 22. */
+function failDrain() { return day === 1 ? 14 : 22; }
 function finishEvent(success) {
   if (!ev || ev.done) return;
   ev.done = true;
@@ -880,7 +891,7 @@ function finishEvent(success) {
     if (rnd() < 0.3) showToast(pick(WIN_QUIPS) + ' +' + pts, 1100);
     else showToast('SQUARED AWAY! +' + pts, 1100);
   } else {
-    streak = 0; meter -= 22; dayStats.failed++;
+    streak = 0; meter -= failDrain(); dayStats.failed++;
     SFX.buzzer();
     triggerFailFlash();
   }
@@ -1477,7 +1488,7 @@ const CADENCE_CHAIN = [
    with the voices — DS call, squad answer, in Carlton's order,
    marching stomps mixed underneath. Total = one full chain. */
 const CADENCE_STEP_DUR = [2.0, 1.0, 2.05, 1.0, 5.3, 1.5];
-const winPop = { active: false, step: 0, t: 0, beat: 0 };
+const winPop = { active: false, step: 0, t: 0, beat: 0, fromMenu: false };
 function cadenceStomp(big) {
   tone(95, 0.13, 'sine', big ? 0.24 : 0.15, 44);
   noiseBurst(0.05, big ? 0.10 : 0.06, 900, 'lowpass');
@@ -1501,6 +1512,26 @@ function showWinPop() {
     if (typeof v.play === 'function') { try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
   }
 }
+/* FRONT-DOOR CADENCE (Carlton): the day-pass cadence is the game's
+   best moment, but it sat buried behind a full Day clear — so the
+   main menu (and How to Play) carry a HEAR THE CADENCE button that
+   borrows THIS pop, not a copy of it: the winPop element is
+   re-homed into the menu's slot for the show and returned to its
+   day-end home slot when it stops, whichever way it stops (skip
+   tap, button toggle, or leaving the menu). Same video, same
+   recorded chain in Carlton's voice, same ribbon, same mute rules
+   (every play routes through VOX / effectiveMuted) — one player,
+   two doors. No save, progress or day flow is touched. */
+function placeWinPop(slot) {
+  const pop = el('winPop');
+  if (pop && slot) { try { slot.appendChild(pop); } catch (e) {} }
+}
+function showMenuCadence() {
+  if (winPop.active && winPop.fromMenu) { stopWinPop(); return; }   // the button toggles it off
+  placeWinPop(el('winPopSlot'));
+  winPop.fromMenu = true;
+  showWinPop();
+}
 function stopWinPop() {
   if (!winPop.active) return;
   winPop.active = false;
@@ -1508,10 +1539,11 @@ function stopWinPop() {
   const pop = el('winPop'), v = el('winVid');
   if (pop) pop.classList.add('hidden');
   if (v && typeof v.pause === 'function') { try { v.pause(); } catch (e) {} }
+  if (winPop.fromMenu) { winPop.fromMenu = false; placeWinPop(el('winPopSlotHome')); }
 }
 function updateWinPop(dt) {
   if (!winPop.active) return;
-  if (state !== 'dayend') { stopWinPop(); return; }
+  if (state !== 'dayend' && !(winPop.fromMenu && state === 'menu')) { stopWinPop(); return; }
   winPop.t += dt;
   // ribbon steps on the recorded mix's slot boundaries when the
   // voice path exists; the text-length heuristic is the fallback
@@ -2240,6 +2272,8 @@ el('pauseBtn').addEventListener('click', () => { if (state === 'event') pauseGam
 el('resumeBtn').addEventListener('click', resumeGame);
 el('quitBtn').addEventListener('click', quitToMenu);
 el('muteBtn').addEventListener('click', () => { save.muted = !save.muted; persist(); updateMute(); });
+el('cadenceBtnMenu').addEventListener('click', () => { SFX.click(); showMenuCadence(); });
+el('cadenceBtnHow').addEventListener('click', () => { SFX.click(); state = 'menu'; showOnly('menu'); showMenuCadence(); });
 el('nextDayBtn').addEventListener('click', () => { showOnly(null); CG.midgameAd(() => startDay(day + 1)); });
 el('dayMenuBtn').addEventListener('click', quitToMenu);
 el('winVid').addEventListener('click', () => { SFX.click(); stopWinPop(); });
@@ -2295,6 +2329,6 @@ window.__bt = {
   VOX, BARK_DUR, BARK_ENV, CADENCE_STEP_DUR,
   pushInfo() { return { frames: SPR.pushFrames.length, w: SPR.pushFrames[0].width, h: SPR.pushFrames[0].height, upSame: SPR.pushUp === SPR.pushFrames[0], dnSame: SPR.pushDn === SPR.pushFrames[SPR.pushFrames.length - 1] }; },
   pushFrameData(i) { const c = SPR.pushFrames[Math.max(0, Math.min(SPR.pushFrames.length - 1, i))]; return c && c.toDataURL ? c.toDataURL('image/png') : null; },
-  CADENCE_CHAIN, showWinPop, stopWinPop,
-  winState() { const l = CADENCE_CHAIN[winPop.step]; return { active: winPop.active, step: winPop.step, who: l ? l.who : null, text: l ? l.text : '' }; }
+  CADENCE_CHAIN, showWinPop, stopWinPop, showMenuCadence, failDrain,
+  winState() { const l = CADENCE_CHAIN[winPop.step]; return { active: winPop.active, fromMenu: winPop.fromMenu, step: winPop.step, who: l ? l.who : null, text: l ? l.text : '' }; }
 };
