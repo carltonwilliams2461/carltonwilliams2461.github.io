@@ -865,7 +865,19 @@ function dsSprite(shout) { return SPR.ds[save.dsPack + (shout ? 'Shout' : 'Calm'
    On every blown order: a huge DS face fills the screen for
    ~0.85s with a screen shake, a bark SFX, and one line from the
    rotating bank — then the push-up beat proceeds as normal.
-   Purely visual; input and timers are untouched. */
+   Purely visual; input and timers are untouched.
+   Carlton's sharpened spec: the face is a PHOTOREALISTIC portrait
+   of a fictional drill sergeant (generated for this game, original
+   character — no real person). The cartoon game cuts to a real
+   face in yours; that contrast is the scare. If the photo can't
+   load (offline/blocked/headless) the big cartoon DS sprite is
+   the fallback. */
+let flashImg = null, flashImgReady = false;
+try {
+  flashImg = new Image();
+  flashImg.onload = () => { flashImgReady = true; };
+  flashImg.src = 'ds-flash.jpg';
+} catch (e) { flashImg = null; }
 const flash = { active: false, t: 0, dur: 0.85, text: '' };
 function nextBarkLine() {
   if (!Array.isArray(save.barkBag) || !save.barkBag.length) {
@@ -886,10 +898,17 @@ function drawFailFlash(g) {
   const remain = Math.max(0, flash.t / flash.dur);
   g.fillStyle = 'rgba(52,8,4,' + (0.45 + 0.25 * remain) + ')';
   g.fillRect(0, 0, W, H);
-  const big = SPR.dsBig[save.dsPack];
-  const pulse = 1 + 0.05 * Math.sin(timeNow * 30) * remain;
-  const fw = 400 * pulse, fh = 453 * pulse;
-  g.drawImage(big, W / 2 - fw / 2, 208 - fh / 2, fw, fh);
+  if (flashImgReady && flashImg) {
+    // the real face: scale-punch as it lands, then it just LOOMS
+    const punch = 1 + 0.30 * remain * remain;
+    const s = 620 * punch;
+    g.drawImage(flashImg, W / 2 - s / 2, 238 - s / 2, s, s);
+  } else {
+    const big = SPR.dsBig[save.dsPack];
+    const pulse = 1 + 0.05 * Math.sin(timeNow * 30) * remain;
+    const fw = 400 * pulse, fh = 453 * pulse;
+    g.drawImage(big, W / 2 - fw / 2, 208 - fh / 2, fw, fh);
+  }
   // the bark, on a stencil ribbon across the bottom
   g.fillStyle = 'rgba(14,14,8,.92)';
   g.beginPath(); g.roundRect(60, H - 118, W - 120, 76, 12); g.fill();
