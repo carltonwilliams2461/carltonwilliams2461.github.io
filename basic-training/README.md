@@ -12,7 +12,10 @@ Vanilla JS + Canvas, no build step, no dependencies. All art is drawn in code
 (pre-rendered to offscreen canvases at boot); SFX are synthesized with
 WebAudio, and the drill sergeant's voice is **real recorded audio** —
 `bark-01..12.mp3` (the fail-flash barks) and `cadence.mp3` (the full
-day-pass cadence chain), generated with a deep male DS voice. **Flat folder
+day-pass cadence chain) — **Carlton's own voice**, recorded by him in
+one take on 2026-11-04 (the earlier TTS voice was swapped out at his
+direction; the bark texts below are his exact performed wording,
+ad-libs included). **Flat folder
 by design**: the CrazyGames uploader flattens subfolders and breaks relative
 paths, so every file sits at the root and the game references bare filenames
 only (asset files: `cover.png`, the menu art; `ds-win.mp4` + `ds-win.jpg`,
@@ -71,10 +74,10 @@ tilted like that"). The skin, hat band, and shirt follow the equipped DS
 pack, so the man in your face is the man from the stage. The tilt also
 applies to the in-game DS sprites and the PIL cover art. The flash lands
 with a **scale-punch** + **screen shake**, shows one line from a
-**12-line bark bank** ("DROP AND GIVE ME 25, NUMBNUTS!", "I'VE SEEN
-BETTER COORDINATION FROM A BAG OF HAMMERS!", …) — and the line is
-**spoken out loud** by the recorded DS voice (`bark-NN.mp3`, same index
-as the text; the flash stays up for the length of the bark, 1.0–2.5 s).
+**12-line bark bank** ("DROP AND GIVE ME 25, NUMB NUTS!", "I'VE SEEN
+BETTER COORDINATION FROM MY BAG OF FUCKING HAMSTERS!", …) — and the line is
+**spoken out loud** by Carlton himself (`bark-NN.mp3`, same index
+as the text; the flash stays up for the length of the bark, ~1.5–4.2 s).
 The bank is a shuffled bag persisted in the save: **no line repeats
 until all 12 have cycled** — audio and text ride the same dealt index,
 so they can never drift apart. The flash is purely visual — timers and
@@ -107,15 +110,19 @@ rendered head-only and in live flash frames and inspected side by
 side: states unmistakably distinct, jaw travel obvious, no tears, no
 duplicated features, hat tilt and brim shadow intact.
 
-**Voice swap (when a new DS voice is chosen):** the talking rig
+**Voice swap — DONE 2026-11-04 (Carlton's own voice):** the talking rig
 reads only the bark clips plus the baked `BARK_DUR` / `BARK_ENV`
-constants, so a replacement voice needs NO rig changes: put the new
-raw clips at `../basic-training-art-raw/audio/raw/bark-01..12.mp3`,
-run `audio/build_audio.py` (it re-encodes the shipped
-`bark-01..12.mp3` and re-measures durations + 20 fps envelopes),
-then paste its printed `BARK_DUR` / `BARK_ENV` over the constants in
-`game.js`. (The cadence calls are a separate mix — `cadence.mp3` is
-rebuilt by the same script from its own raw segments.)
+constants, so the replacement voice needed NO rig changes: his
+one-take recording was segmented on silence boundaries into
+`../basic-training-art-raw/audio/raw/bark-01..12.mp3` (+ `call-1..3`,
+`resp-1..2`), `audio/build_audio.py` re-encoded the shipped
+`bark-01..12.mp3`, re-measured durations + 20 fps envelopes, and the
+printed `BARK_DUR` / `BARK_ENV` replaced the constants in
+`game.js`. The flash length cap rose 2.9 s → 6.0 s so his longer
+lines are never cut. The old TTS raws are kept in
+`audio/raw/mai03-backup/`. (The cadence calls are a separate mix —
+`cadence.mp3` was rebuilt by the same script from his call/response
+takes, slots widened to his natural pace — no tempo compression.)
 
 ## THE DAY-PASS CADENCE
 
@@ -134,14 +141,15 @@ SQUAD label, never part of the call:
 > 🗣️ DS: YOUR MAMA, YOUR DADDY, THE DOG, THE CAT, THE RAT WERE ALL HOME
 > WHEN YOU LEFT! → 📣 SQUAD: YOU'RE RIGHT! YOU'RE RIGHT!
 
-**The cadence is now real recorded audio too** (`cadence.mp3`, 8.7 s):
-the DS call lines in the same deep male voice, the squad's "YOU'RE
-RIGHT!" answers **group-processed** (five layered takes — pitch-shifted,
-offset, room-echoed — so it sounds like a formation answering, not one
-man), assembled call → response → call → response → full chain →
-double response in Carlton's exact order, with synthesized marching
-stomps mixed underneath at step tempo. Each segment was built into an
-exact time slot (`CADENCE_STEP_DUR` = 1.15 / 0.90 / 1.15 / 0.90 / 3.10 /
+**The cadence is now real recorded audio too** (`cadence.mp3`, 12.85 s):
+the DS call lines in Carlton's own voice, the squad's "YOU'RE
+RIGHT!" answers **group-processed from his own takes** (five layered
+copies — pitch-shifted, offset, room-echoed — so it sounds like a
+formation answering, not one man), assembled call → response → call →
+response → full chain → double response in Carlton's exact order,
+with synthesized marching stomps mixed underneath at step tempo.
+Each segment was built into an
+exact time slot (`CADENCE_STEP_DUR` = 2.00 / 1.00 / 2.05 / 1.00 / 5.30 /
 1.50 s), and the ribbon steps on those slot boundaries, so the words on
 screen land with the voices. The chain is the primary cadence and stays
 intact in this order. **Tap the video to skip**; the pop also stops
