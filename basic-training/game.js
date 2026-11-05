@@ -422,19 +422,24 @@ function drawRecruit(g, w, h, o) {
   }
 }
 const SPR = {};
+/* DS pack art, shared by the stage sprites and the fail-flash
+   close-up head (drawFlashHead), so the man in your face is the
+   same man as on the stage: same skin, same hat band, same shirt. */
+const DS_PACK_ART = {
+  classic:  { skin: '#c98d5e', band: '#3d2c17', shirt: '#5a6148', clearGlasses: false },
+  southern: { skin: '#a96f3f', band: '#7a1f1f', shirt: '#6b5a35', clearGlasses: false },
+  whisper:  { skin: '#dcb08a', band: '#20242c', shirt: '#39404d', clearGlasses: true }
+};
 function buildSprites() {
-  const packs = {
-    classic:  { skin: '#c98d5e', band: '#3d2c17', shirt: '#5a6148', clearGlasses: false },
-    southern: { skin: '#a96f3f', band: '#7a1f1f', shirt: '#6b5a35', clearGlasses: false },
-    whisper:  { skin: '#dcb08a', band: '#20242c', shirt: '#39404d', clearGlasses: true }
-  };
+  const packs = DS_PACK_ART;
   SPR.ds = {};
   SPR.dsBig = {};
   for (const k of Object.keys(packs)) {
     SPR.ds[k + 'Calm'] = makeSprite(300, 340, (g, w, h) => drawDSHead(g, w, h, Object.assign({}, packs[k], { shout: false })));
     SPR.ds[k + 'Shout'] = makeSprite(300, 340, (g, w, h) => drawDSHead(g, w, h, Object.assign({}, packs[k], { shout: true })));
-    // the FAIL FLASH close-up: same vector art rendered at 2x so the
-    // full-screen face stays crisp
+    // legacy 2x DS render — the fail flash used this sprite before
+    // the talking close-up head (drawFlashHead) replaced it; kept
+    // as spare art, nothing in the flash path reads it anymore
     SPR.dsBig[k] = makeSprite(600, 680, (g, w, h) => drawDSHead(g, w, h, Object.assign({}, packs[k], { shout: true })));
   }
   SPR.recruit = {};
@@ -1071,23 +1076,36 @@ VOX.init();
 /* ---------------- THE FAIL FLASH ----------------
    On every blown order: a huge DS face fills the screen with a
    screen shake and one line from the rotating bark bank — SPOKEN
-   by the recorded DS voice while the photo's jaw works with the
-   syllables (see drawFlashFace) — then the push-up beat proceeds
+   by the recorded DS voice while the face TALKS with the
+   syllables (see drawFlashHead) — then the push-up beat proceeds
    as normal. Purely visual; input and timers are untouched.
-   Carlton's sharpened spec: the face is a PHOTOREALISTIC portrait
-   of a fictional drill sergeant (generated for this game, original
-   character — no real person). The cartoon game cuts to a real
-   face in yours; that contrast is the scare. If the photo can't
-   load (offline/blocked/headless) the big cartoon DS sprite is
-   the fallback. The face animation is the photo itself, animated
-   programmatically on canvas — the video-generator route for this
-   face was refused by the media pipeline and is NOT retried. */
-let flashImg = null, flashImgReady = false;
-try {
-  flashImg = new Image();
-  flashImg.onload = () => { flashImgReady = true; };
-  flashImg.src = 'ds-flash.jpg';
-} catch (e) { flashImg = null; }
+
+   THE FACE (Carlton, Nov 4, final form): the flash shipped first
+   as a photoreal portrait, then as that portrait with a
+   canvas-animated jaw — and he still read it as "a still photo,
+   it ain't moving." His fix: "maybe he can be a cartoon, but
+   just a talking type of cartoon — a realistic looking talking
+   cartoon saying the words of the voice you put with it." So
+   the flash face is now a detailed shaded CARTOON head drawn in
+   code: same character language as the covers and the stage DS
+   (campaign hat TILTED low, brim shadow over hard bare eyes, no
+   sunglasses) with a rigged jaw and mouth — FOUR mouth states
+   (closed / slight / mid / wide) selected every frame from the
+   bark clip's loudness envelope, so the mouth slams shut
+   between words exactly like a man talking, while the brows
+   furrow and the whole head lunges and shakes with the bark.
+   The photograph (ds-flash.jpg) is retired from the game; the
+   original file lives in basic-training-art-raw/ with the
+   rejected generation candidates.
+
+   VOICE-SWAP PATH: the rig reads ONLY the bark clips plus the
+   baked BARK_DUR / BARK_ENV constants. A replacement DS voice
+   drops in by putting new raw clips at
+   basic-training-art-raw/audio/raw/bark-01..12.mp3, re-running
+   audio/build_audio.py (it re-encodes bark-01..12.mp3 here and
+   re-measures durations + envelopes), and pasting its printed
+   BARK_DUR / BARK_ENV over the constants in the VOX block.
+   No rig code changes. */
 const flash = { active: false, t: 0, dur: 0.85, text: '', barkIdx: -1, jaw: 0, jawOverride: null };
 function nextBarkLine() {
   if (!Array.isArray(save.barkBag) || !save.barkBag.length) {
@@ -1106,7 +1124,7 @@ function triggerFailFlash() {
   flash.active = true;
   if (!VOX.playBark(flash.barkIdx)) SFX.bark(3);   // synth only where no Audio exists
 }
-/* How open the DS jaw is right now, 0..1 — driven by the bark
+/* How open the DS mouth is right now, 0..1 — driven by the bark
    clip's measured loudness envelope at the playback position
    (or the flash clock when the voice is muted/absent), so the
    mouth works WITH the syllables. jawOverride is a test hook. */
@@ -1120,67 +1138,306 @@ function flashJawAmount() {
   const cur = env[f], nxt = env[Math.min(env.length - 1, f + 1)];
   return Math.max(0, Math.min(1, (cur + nxt) / 2));
 }
-/* The talking face: the photograph itself, animated on canvas.
-   The lower face is re-drawn in horizontal strips with a
-   progressive vertical stretch anchored at the mouth line:
-   pixels AT the seam don't move at all, and displacement grows
-   toward the chin — so there is no tear or duplicated band, the
-   skin and the dark mouth interior simply pull open like a real
-   jaw working. Loud syllables stretch it wide; quiet ones let
-   it settle back to the untouched photograph (jaw = 0). */
-const JAW_GEO = { cx: 0.465, topY: 0.585, botY: 0.875, halfW: 0.225 };
-function drawFlashFace(g, dx, dy, s, jaw) {
-  g.drawImage(flashImg, dx, dy, s, s);
-  if (jaw <= 0.02) return;
-  const iw = (flashImg && flashImg.naturalWidth) || 900;
-  const cxp = dx + JAW_GEO.cx * s, hw = JAW_GEO.halfW * s;
-  const topS = JAW_GEO.topY, botS = 0.92, k = jaw * 0.15;
-  const chinDest = topS + (JAW_GEO.botY - topS) * (1 + k);
-  const topY = dy + topS * s, botY = dy + (chinDest + 0.015) * s;
+/* Which of the four mouth states an envelope value selects.
+   Under 0.10 the mouth is CLOSED — between words and on quiet
+   consonants it shuts, and that shutting is what makes the open
+   states read as speech instead of a hole in the face. */
+function flashMouthState(jaw) {
+  if (jaw < 0.10) return 0;
+  if (jaw < 0.35) return 1;
+  if (jaw < 0.65) return 2;
+  return 3;
+}
+/* hex color -> rgb() string shifted toward black (amt<0) or
+   white (amt>0); the flash head's shading is built from these. */
+function shadeOf(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  const t = amt < 0 ? 0 : 255, f = Math.abs(amt);
+  r = Math.round(r + (t - r) * f); g = Math.round(g + (t - g) * f); b = Math.round(b + (t - b) * f);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+/* THE TALKING HEAD — a face-filling cartoon drill sergeant,
+   drawn fresh every frame in a 900x900 stage (the old photo's
+   frame), centered on (cx, cy) at size s. jaw (0..1) is the
+   live envelope value: it picks the mouth state, drops the jaw
+   group on its hinge, and widens the shout. fury (0..1) drives
+   the brow furrow and creases. Layers, back to front: shoulders
+   + collar, neck, the JAW GROUP (chin, stubble, jaw shading —
+   translated/rotated as one piece so it can never tear), the
+   upper head (skull, ears, nose, hard eyes, brows), the mouth
+   assembly (interior, teeth, tongue — spanning both layers),
+   then the tilted campaign hat and the brim's shadow band laid
+   over the eyes. At jaw = 0 the head is at rest: mouth shut,
+   jaw seated — that rest head is also the flash's only
+   fallback; there is no image left to fail to load. */
+function drawFlashHead(g, cx, cy, s, jaw, fury) {
+  const P = DS_PACK_ART[save.dsPack] || DS_PACK_ART.classic;
+  const skin = P.skin, band = P.band, shirt = P.shirt, hat = '#6b4a2a';
+  const state = flashMouthState(jaw);
+  const drop = jaw * 34;                    // chin travel on its hinge
+  const openH = [2, 13, 33, 58][state];     // mouth interior height
+  const lipY = 668, mCx = 450;
+  const mHW = 80 + state * 7;               // mouth half-width
   g.save();
+  g.translate(cx - s / 2, cy - s / 2);
+  g.scale(s / 900, s / 900);
+
+  /* ---- shoulders + uniform collar ---- */
+  let gr = g.createLinearGradient(0, 750, 0, 900);
+  gr.addColorStop(0, shadeOf(shirt, -0.02)); gr.addColorStop(1, shadeOf(shirt, -0.30));
+  g.fillStyle = gr;
   g.beginPath();
-  g.moveTo(cxp - hw, topY);
-  g.quadraticCurveTo(cxp - hw, botY, cxp, botY);
-  g.quadraticCurveTo(cxp + hw, botY, cxp + hw, topY);
-  g.quadraticCurveTo(cxp, topY - 0.03 * s, cxp - hw, topY);
-  g.closePath(); g.clip();
-  const STRIPS = 26;
-  for (let i = 0; i < STRIPS; i++) {
-    const f0 = i / STRIPS, f1 = (i + 1) / STRIPS;
-    const sy0 = (topS + (botS - topS) * f0) * iw, sy1 = (topS + (botS - topS) * f1) * iw;
-    const dy0 = dy + (topS + (botS - topS) * f0 * (1 + k)) * s;
-    const dy1 = dy + (topS + (botS - topS) * f1 * (1 + k)) * s;
-    g.drawImage(flashImg, 0, sy0, iw, sy1 - sy0, dx, dy0, s, (dy1 - dy0) + 1);
+  g.moveTo(60, 900); g.bezierCurveTo(130, 806, 300, 768, 450, 760);
+  g.bezierCurveTo(600, 768, 770, 806, 840, 900); g.closePath(); g.fill();
+  g.fillStyle = shadeOf(shirt, -0.38);         // collar V shadow
+  g.beginPath();
+  g.moveTo(400, 772); g.lineTo(450, 846); g.lineTo(500, 772); g.lineTo(518, 900); g.lineTo(382, 900); g.closePath(); g.fill();
+  g.fillStyle = shadeOf(shirt, -0.16);         // collar flaps
+  g.beginPath(); g.moveTo(394, 768); g.lineTo(450, 840); g.lineTo(434, 856); g.lineTo(368, 786); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(506, 768); g.lineTo(450, 840); g.lineTo(466, 856); g.lineTo(532, 786); g.closePath(); g.fill();
+  g.fillStyle = '#c9a227';                  // collar brass
+  for (const bx of [404, 496]) {
+    g.beginPath(); g.arc(bx, 852, 9, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(80,58,4,.7)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(bx - 5, 847); g.lineTo(bx + 5, 857); g.moveTo(bx + 5, 847); g.lineTo(bx - 5, 857); g.stroke();
+  }
+
+  /* ---- neck (mostly in the jaw's shadow) ---- */
+  g.fillStyle = shadeOf(skin, -0.17);
+  g.beginPath();
+  g.moveTo(398, 686); g.lineTo(502, 686); g.lineTo(512, 788);
+  g.bezierCurveTo(480, 806, 420, 806, 388, 788); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(40,16,4,.32)';
+  g.beginPath(); g.ellipse(450, 706, 92, 24, 0, 0, 7); g.fill();
+
+  /* ---- THE JAW GROUP: chin + stubble + jaw shading, moved as
+     one piece (drop + a hinge rotation at ear height), so the
+     lower face can work without ever tearing at a seam. The
+     upper head is drawn over its top edge at every position. */
+  g.save();
+  g.translate(450, 615); g.rotate(jaw * 0.05); g.translate(-450, -615);
+  g.translate(0, drop);
+  const jawPath = () => {
+    g.beginPath();
+    g.moveTo(234, 560);
+    g.bezierCurveTo(228, 652, 242, 730, 304, 784);
+    g.bezierCurveTo(354, 824, 546, 824, 596, 784);
+    g.bezierCurveTo(658, 730, 672, 652, 666, 560);
+    g.bezierCurveTo(596, 590, 304, 590, 234, 560);
+    g.closePath();
+  };
+  gr = g.createLinearGradient(0, 540, 0, 824);
+  gr.addColorStop(0, shadeOf(skin, -0.01)); gr.addColorStop(1, shadeOf(skin, -0.14));
+  g.fillStyle = gr; jawPath(); g.fill();
+  g.save(); jawPath(); g.clip();
+  g.fillStyle = 'rgba(74,34,8,.15)';        // masseter (jaw muscle) shading
+  g.beginPath(); g.ellipse(268, 672, 36, 86, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(632, 672, 36, 86, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(74,34,8,.13)';        // under-chin shade
+  g.beginPath(); g.ellipse(450, 808, 180, 44, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(255,226,178,.10)';    // chin highlight
+  g.beginPath(); g.ellipse(450, 748, 58, 18, 0, 0, 7); g.fill();
+  // stubble: a deterministic speckle (same seed every frame —
+  // a beard, not television static)
+  let seed = 987654321;
+  const srnd = () => { seed = (seed * 48271) % 2147483647; return (seed - 1) / 2147483646; };
+  for (let i = 0; i < 650; i++) {
+    const sx = 245 + srnd() * 410, sy = 640 + Math.pow(srnd(), 1.35) * 166;
+    g.fillStyle = 'rgba(34,20,10,' + (0.04 + srnd() * 0.07).toFixed(3) + ')';
+    g.beginPath(); g.arc(sx, sy, 1 + srnd() * 1.8, 0, 7); g.fill();
   }
   g.restore();
-  // soft shadow pooling under the stretched jaw sells the hinge
-  g.fillStyle = 'rgba(20,6,2,' + (0.18 * jaw).toFixed(3) + ')';
-  g.beginPath(); g.ellipse(cxp, dy + chinDest * s, hw * 0.8, 0.02 * s, 0, 0, 7); g.fill();
+  g.restore();
+
+  /* ---- UPPER HEAD: skull, ears, nose, eyes, brows ---- */
+  gr = g.createLinearGradient(0, 130, 0, 690);
+  gr.addColorStop(0, shadeOf(skin, 0.10)); gr.addColorStop(0.45, skin); gr.addColorStop(1, shadeOf(skin, -0.05));
+  g.fillStyle = gr;
+  g.beginPath();
+  g.moveTo(450, 150);
+  g.bezierCurveTo(562, 150, 650, 220, 670, 340);
+  g.bezierCurveTo(684, 430, 680, 540, 664, 632);
+  g.bezierCurveTo(622, 676, 544, 692, 450, 692);
+  g.bezierCurveTo(356, 692, 278, 676, 236, 632);
+  g.bezierCurveTo(220, 540, 216, 430, 230, 340);
+  g.bezierCurveTo(250, 220, 338, 150, 450, 150);
+  g.closePath(); g.fill();
+  // ears
+  for (const m of [-1, 1]) {
+    g.fillStyle = shadeOf(skin, -0.05);
+    g.beginPath(); g.ellipse(450 + m * 232, 530, 30, 54, 0, 0, 7); g.fill();
+    g.fillStyle = shadeOf(skin, -0.24);
+    g.beginPath(); g.ellipse(450 + m * 236, 532, 13, 30, 0, 0, 7); g.fill();
+  }
+  // broad shading: temples, cheeks, cheekbone light
+  g.fillStyle = 'rgba(84,40,10,.10)';
+  g.beginPath(); g.ellipse(272, 330, 44, 108, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(628, 330, 44, 108, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(84,40,10,.08)';
+  g.beginPath(); g.ellipse(296, 572, 50, 66, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(604, 572, 50, 66, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(255,228,178,.10)';
+  g.beginPath(); g.ellipse(322, 506, 42, 24, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(578, 506, 42, 24, 0, 0, 7); g.fill();
+  // nose: bridge shade, base, nostrils, highlight
+  g.fillStyle = 'rgba(92,46,16,.12)';
+  g.beginPath(); g.moveTo(430, 452); g.lineTo(442, 452); g.lineTo(438, 542); g.lineTo(426, 542); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(458, 452); g.lineTo(470, 452); g.lineTo(474, 542); g.lineTo(462, 542); g.closePath(); g.fill();
+  g.fillStyle = shadeOf(skin, -0.12);
+  g.beginPath(); g.ellipse(450, 596, 36, 17, 0, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(80,40,14,.35)'; g.lineWidth = 4; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(424, 590); g.quadraticCurveTo(450, 610, 476, 590); g.stroke();
+  g.fillStyle = 'rgba(43,20,7,.6)';
+  g.beginPath(); g.ellipse(433, 600, 8.5, 5.5, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(467, 600, 8.5, 5.5, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(255,232,188,.13)';
+  g.beginPath(); g.ellipse(444, 546, 9, 30, -0.08, 0, 7); g.fill();
+  // nasolabial folds — they deepen with fury
+  g.strokeStyle = 'rgba(74,36,12,' + (0.10 + 0.22 * fury).toFixed(3) + ')'; g.lineWidth = 5;
+  g.beginPath(); g.moveTo(406, 600); g.quadraticCurveTo(386, 642, 394, 668); g.stroke();
+  g.beginPath(); g.moveTo(494, 600); g.quadraticCurveTo(514, 642, 506, 668); g.stroke();
+  // eyes: hard, bare, narrowed — sockets, whites, irises, lids
+  for (const m of [-1, 1]) {
+    const ecx = 450 + m * 102;
+    g.fillStyle = 'rgba(84,40,10,.10)';
+    g.beginPath(); g.ellipse(ecx, 502, 60, 28, 0, 0, 7); g.fill();
+    g.fillStyle = '#e9e3d3';
+    g.beginPath();
+    g.moveTo(ecx - 47, 508); g.quadraticCurveTo(ecx, 491, ecx + 47, 508);
+    g.quadraticCurveTo(ecx, 523, ecx - 47, 508); g.closePath(); g.fill();
+    g.fillStyle = '#2c1a0e';
+    g.beginPath(); g.arc(ecx + m * 3, 507, 14, 0, 7); g.fill();
+    g.fillStyle = '#070302';
+    g.beginPath(); g.arc(ecx + m * 3, 507, 6, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.9)';
+    g.beginPath(); g.arc(ecx - 4, 501, 3, 0, 7); g.fill();
+    // heavy upper lid, slanted down toward the nose — the anger
+    g.strokeStyle = shadeOf(skin, -0.30); g.lineWidth = 14; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(ecx - m * 51, 492); g.quadraticCurveTo(ecx, 486 + fury * 3, ecx + m * 51, 505); g.stroke();
+    g.strokeStyle = 'rgba(70,36,12,.55)'; g.lineWidth = 4;
+    g.beginPath(); g.moveTo(ecx - m * 51, 480); g.quadraticCurveTo(ecx, 474 + fury * 3, ecx + m * 51, 492); g.stroke();
+    g.strokeStyle = 'rgba(70,36,12,.45)';
+    g.beginPath(); g.moveTo(ecx - 38, 521); g.quadraticCurveTo(ecx, 529, ecx + 38, 521); g.stroke();
+  }
+  // brows: thick, dropped at the inner ends — furrow scales with fury
+  for (const m of [-1, 1]) {
+    g.strokeStyle = '#221206'; g.lineWidth = 18; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(450 + m * 160, 466 + fury * 3); g.lineTo(450 + m * 40, 480 + fury * 13); g.stroke();
+    g.strokeStyle = 'rgba(34,18,6,.6)'; g.lineWidth = 6;
+    g.beginPath(); g.moveTo(450 + m * 152, 458 + fury * 3); g.lineTo(450 + m * 48, 471 + fury * 13); g.stroke();
+  }
+  // forehead creases between the brows
+  g.strokeStyle = 'rgba(74,36,12,' + (0.08 + 0.30 * fury).toFixed(3) + ')'; g.lineWidth = 5;
+  g.beginPath(); g.moveTo(430, 474); g.quadraticCurveTo(450, 468 + fury * 5, 470, 474); g.stroke();
+
+  /* ---- MOUTH ASSEMBLY: spans the upper head and the jaw
+     group — interior height IS the jaw state, teeth hang from
+     the upper lip, tongue rides the bottom. ---- */
+  if (state === 0) {
+    // pressed shut: a grim line, lips sealed between words
+    g.strokeStyle = '#6e3b26'; g.lineWidth = 8; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(mCx - mHW, lipY + 1); g.quadraticCurveTo(mCx, lipY + 7, mCx + mHW, lipY + 1); g.stroke();
+    g.strokeStyle = 'rgba(70,36,12,.30)'; g.lineWidth = 3;
+    g.beginPath(); g.moveTo(mCx - mHW * 0.8, lipY - 7); g.quadraticCurveTo(mCx, lipY - 3, mCx + mHW * 0.8, lipY - 7); g.stroke();
+    g.fillStyle = 'rgba(60,28,8,.25)';
+    g.beginPath(); g.ellipse(mCx, lipY + 14, mHW * 0.5, 6, 0, 0, 7); g.fill();
+  } else {
+    const mBot = lipY + openH;
+    const cornerL = lipY - (state === 3 ? 5 : 0), cornerR = lipY + 1;
+    const traceMouth = () => {
+      g.beginPath();
+      g.moveTo(mCx - mHW, cornerL);
+      g.quadraticCurveTo(mCx, lipY - 7, mCx + mHW, cornerR);
+      g.quadraticCurveTo(mCx + mHW * 0.55, mBot, mCx, mBot + 2);
+      g.quadraticCurveTo(mCx - mHW * 0.55, mBot, mCx - mHW, cornerL);
+      g.closePath();
+    };
+    gr = g.createLinearGradient(0, lipY, 0, mBot);
+    gr.addColorStop(0, '#431207'); gr.addColorStop(1, '#1d0503');
+    g.fillStyle = gr; traceMouth(); g.fill();
+    g.save(); traceMouth(); g.clip();
+    // upper teeth, hanging from the upper lip
+    const teethH = Math.min(16, openH * 0.5 + 4);
+    g.fillStyle = '#e9e2cf';
+    g.fillRect(mCx - mHW * 0.82, lipY - 4, mHW * 1.64, teethH);
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 2;
+    for (const tx of [-0.30, 0, 0.30]) {
+      g.beginPath(); g.moveTo(mCx + tx * mHW * 2 * 0.82, lipY - 2); g.lineTo(mCx + tx * mHW * 2 * 0.82, lipY - 4 + teethH); g.stroke();
+    }
+    if (state >= 2) {
+      // tongue + lower teeth ride the jaw
+      g.fillStyle = '#93453a';
+      g.beginPath(); g.ellipse(mCx, mBot - 3, mHW * 0.46, Math.max(5, openH * 0.30), 0, 0, 7); g.fill();
+      g.fillStyle = 'rgba(255,180,150,.25)';
+      g.beginPath(); g.ellipse(mCx - mHW * 0.12, mBot - 6, mHW * 0.22, Math.max(2.5, openH * 0.13), 0, 0, 7); g.fill();
+      g.fillStyle = 'rgba(221,213,192,.92)';
+      g.fillRect(mCx - mHW * 0.6, mBot - 7, mHW * 1.2, 7);
+    }
+    g.restore();
+    g.strokeStyle = 'rgba(70,32,16,.85)'; g.lineWidth = 5; traceMouth(); g.stroke();
+    // lower-lip light + the shadow the open mouth throws on the chin
+    g.strokeStyle = 'rgba(255,210,170,.18)'; g.lineWidth = 5;
+    g.beginPath(); g.moveTo(mCx - mHW * 0.6, mBot + 5); g.quadraticCurveTo(mCx, mBot + 11, mCx + mHW * 0.6, mBot + 5); g.stroke();
+    g.fillStyle = 'rgba(50,22,6,' + (0.10 + 0.14 * jaw).toFixed(3) + ')';
+    g.beginPath(); g.ellipse(mCx, mBot + 17, mHW * 0.7, 8, 0, 0, 7); g.fill();
+  }
+
+  /* ---- THE HAT: one tilted group, pulled LOW — crown, band,
+     brass, and the wide brim whose front edge rides right over
+     the brows. Then its shadow, laid across the eyes. ---- */
+  g.save();
+  g.translate(450, 330); g.rotate(0.055); g.translate(-450, -330);
+  gr = g.createLinearGradient(0, 70, 0, 400);
+  gr.addColorStop(0, shadeOf(hat, 0.10)); gr.addColorStop(1, shadeOf(hat, -0.14));
+  g.fillStyle = gr;
+  g.beginPath(); g.ellipse(450, 235, 205, 165, 0, 0, 7); g.fill();          // crown
+  g.fillStyle = shadeOf(hat, -0.08);
+  g.beginPath(); g.ellipse(450, 148, 100, 30, 0, 0, 7); g.fill();           // crown pinch
+  g.fillStyle = band; g.fillRect(292, 318, 316, 54);                        // hat band (inside the crown's silhouette)
+  g.fillStyle = shadeOf(band, -0.30); g.fillRect(292, 362, 316, 10);
+  g.fillStyle = '#c9a227';                                                  // band brass
+  g.fillRect(437, 324, 26, 28);
+  g.strokeStyle = 'rgba(80,58,4,.8)'; g.lineWidth = 3; g.strokeRect(443, 330, 14, 16);
+  gr = g.createLinearGradient(0, 326, 0, 458);
+  gr.addColorStop(0, shadeOf(hat, 0.03)); gr.addColorStop(1, shadeOf(hat, -0.18));
+  g.fillStyle = gr;
+  g.beginPath(); g.ellipse(450, 392, 412, 66, 0, 0, 7); g.fill();           // brim
+  g.save();
+  g.beginPath(); g.rect(0, 392, 900, 80); g.clip();
+  g.strokeStyle = 'rgba(20,10,2,.35)'; g.lineWidth = 4;
+  g.beginPath(); g.ellipse(450, 392, 412, 66, 0, 0, 7); g.stroke();         // brim front edge
+  g.restore();
+  // the brim's shadow band across the eyes — the menace lives here
+  // (kept translucent and soft: a shadow, never a visor)
+  g.fillStyle = 'rgba(22,10,3,.21)';
+  g.beginPath(); g.ellipse(450, 482, 300, 76, 0, 0, 7); g.fill();
+  g.fillStyle = 'rgba(22,10,3,.08)';
+  g.beginPath(); g.ellipse(450, 514, 288, 42, 0, 0, 7); g.fill();
+  g.restore();
+
+  g.restore();
 }
 function drawFailFlash(g) {
   if (!flash.active) return;
   const remain = Math.max(0, flash.t / flash.dur);
   g.fillStyle = 'rgba(52,8,4,' + (0.45 + 0.25 * remain) + ')';
   g.fillRect(0, 0, W, H);
-  if (flashImgReady && flashImg) {
-    // the real face: scale-punch as it lands, then it LOOMS —
-    // lunging and shaking with the bark while the jaw works
-    const jaw = flashJawAmount();
-    flash.jaw = jaw;
-    const punch = 1 + 0.30 * remain * remain + 0.045 * jaw;
-    const s = 620 * punch;
-    const cxp = W / 2 + (Math.sin(timeNow * 57) * 2.4 + Math.sin(timeNow * 31) * 1.4) * jaw;
-    const cyp = 238 + Math.cos(timeNow * 47) * 2.0 * jaw;
-    g.save();
-    g.translate(cxp, cyp); g.rotate(Math.sin(timeNow * 41) * 0.008 * jaw); g.translate(-cxp, -cyp);
-    drawFlashFace(g, cxp - s / 2, cyp - s / 2, s, jaw);
-    g.restore();
-  } else {
-    const big = SPR.dsBig[save.dsPack];
-    const pulse = 1 + 0.05 * Math.sin(timeNow * 30) * remain;
-    const fw = 400 * pulse, fh = 453 * pulse;
-    g.drawImage(big, W / 2 - fw / 2, 208 - fh / 2, fw, fh);
-  }
+  // the talking cartoon head: scale-punch as it lands, then it
+  // LOOMS — lunging and shaking, gated by the bark envelope,
+  // while the mouth works the syllables. jaw = 0 is the head at
+  // rest; that rest head is the only fallback (no image to load).
+  const jaw = flashJawAmount();
+  flash.jaw = jaw;
+  const fury = Math.max(jaw, remain * 0.6);
+  const punch = 1 + 0.24 * remain * remain + 0.045 * jaw;
+  const s = 620 * punch;
+  const cxp = W / 2 + (Math.sin(timeNow * 57) * 2.4 + Math.sin(timeNow * 31) * 1.4) * jaw;
+  const cyp = 212 + Math.cos(timeNow * 47) * 2.0 * jaw;
+  g.save();
+  g.translate(cxp, cyp); g.rotate(Math.sin(timeNow * 41) * 0.008 * jaw); g.translate(-cxp, -cyp);
+  drawFlashHead(g, cxp, cyp, s, jaw, fury);
+  g.restore();
   // the bark, on a stencil ribbon across the bottom
   g.fillStyle = 'rgba(14,14,8,.92)';
   g.beginPath(); g.roundRect(60, H - 118, W - 120, 76, 12); g.fill();
@@ -2025,6 +2282,16 @@ window.__bt = {
   flashState() { return { active: flash.active, t: flash.t, text: flash.text, barkIdx: flash.barkIdx, jaw: flash.jaw || 0, bankRemaining: Array.isArray(save.barkBag) ? save.barkBag.length : 0 }; },
   get flash() { return flash; },
   triggerFailFlash,
+  flashMouthState,
+  flashHeadData(jaw, fury) {
+    try {
+      const c = document.createElement('canvas'); c.width = 900; c.height = 900;
+      const g2 = c.getContext('2d');
+      g2.fillStyle = '#340804'; g2.fillRect(0, 0, 900, 900);
+      drawFlashHead(g2, 450, 462, 880, jaw, fury == null ? Math.max(jaw, 0.5) : fury);
+      return c.toDataURL ? c.toDataURL('image/png') : null;
+    } catch (e) { return null; }
+  },
   VOX, BARK_DUR, BARK_ENV, CADENCE_STEP_DUR,
   pushInfo() { return { frames: SPR.pushFrames.length, w: SPR.pushFrames[0].width, h: SPR.pushFrames[0].height, upSame: SPR.pushUp === SPR.pushFrames[0], dnSame: SPR.pushDn === SPR.pushFrames[SPR.pushFrames.length - 1] }; },
   pushFrameData(i) { const c = SPR.pushFrames[Math.max(0, Math.min(SPR.pushFrames.length - 1, i))]; return c && c.toDataURL ? c.toDataURL('image/png') : null; },
