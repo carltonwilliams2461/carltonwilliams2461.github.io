@@ -14,16 +14,23 @@
   html, body {
     background:#0b0714; color:#f3ead8;
     font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
-    height:100%; overflow:hidden;
+    height:100%; height:100dvh; overflow:hidden; overscroll-behavior:none;
     -webkit-user-select:none; user-select:none;
     -webkit-tap-highlight-color: transparent;
   }
+  /* The game is the entire page: #wrap is fixed and the pinning script
+     keeps it sized/offset to window.visualViewport, so the column
+     always sits exactly inside the visible area (mobile browser bars
+     can never slide it off-screen). CSS size here is the pre-JS state. */
   #wrap {
-    height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:8px; padding:8px;
+    position:fixed; top:0; left:0; width:100%;
+    height:100%; height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:8px;
+    padding:max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    touch-action:none; overscroll-behavior:none;
   }
   #hud {
-    width:min(96vw, 960px); display:flex; align-items:center; gap:12px;
+    width:min(100%, 960px); display:flex; align-items:center; gap:12px;
     font-size:clamp(13px, 2.5vw, 19px); font-weight:bold;
   }
   #hud .spacer { flex:1; }
@@ -32,22 +39,36 @@
   .iconbtn {
     background:#2c2144; color:#f3ead8; border:2px solid #4a3566; border-radius:10px;
     font-size:clamp(14px, 2.6vw, 19px); padding:3px 11px; cursor:pointer; line-height:1.25;
+    min-width:40px; min-height:40px; display:inline-flex; align-items:center; justify-content:center;
   }
   .iconbtn:active { transform:translateY(1px); }
   #timebarOuter {
-    width:min(96vw, 960px); height:10px; background:#241a38; border-radius:6px; overflow:hidden;
+    width:min(100%, 960px); height:10px; background:#241a38; border-radius:6px; overflow:hidden;
   }
   #timebar { height:100%; width:100%; background:linear-gradient(90deg,#ffd94d,#ff9d3c); transition:width .2s linear; }
-  #stage { position:relative; width:min(96vw, 960px); }
+  /* Stage fits by width AND height: the calc() term caps the stage so
+     canvas (960:600) + HUD + timebar + tip never exceed the pinned
+     visible height (--vvh comes from the pinning script /
+     visualViewport; 100dvh is the no-JS fallback). First width line
+     is the fallback for browsers without dvh/var support. */
+  #stage {
+    position:relative; width:min(100%, 960px);
+    width:min(100%, 960px, calc((var(--vvh, 100dvh) - 112px) * 1.6));
+  }
   canvas {
     display:block; width:100%; aspect-ratio: 960 / 600; background:#171126;
     border:3px solid #4a3566; border-radius:12px; touch-action:none;
   }
   .overlay {
-    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
     text-align:center; background:rgba(10,6,20,.86); border-radius:12px; padding:16px; gap:10px;
     overflow-y:auto;
   }
+  /* safe centering: auto margins center the menu when it fits, and fall
+     back to top-aligned (fully scrollable) when it doesn't — plain
+     justify-content:center clips the top of tall menus out of reach */
+  .overlay > :first-child { margin-top:auto; }
+  .overlay > :last-child { margin-bottom:auto; }
   .overlay h1 {
     font-size:clamp(36px, 8vw, 62px); letter-spacing:2px; color:#ffd94d;
     text-shadow:0 3px 0 #b97e1e, 0 8px 24px rgba(0,0,0,.8);
@@ -74,6 +95,16 @@
   .btnrow { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .hidden { display:none !important; }
   #tip { font-size:clamp(12px, 2.4vw, 15px); opacity:.8; text-align:center; max-width:960px; }
+  /* short viewports (landscape phones): chrome compacts — tighter
+     padding, capped cover art, smaller footer — but every label and
+     name stays fully visible; menus scroll internally if needed */
+  @media (max-height: 520px) {
+    #tip { font-size:11px; }
+    .overlay { padding:10px; gap:6px; }
+    .coverart { max-height:32vh; }
+    .shopitem { padding:6px 10px; }
+    .shopitem img { width:40px; height:40px; }
+  }
   kbd { background:#3a2c55; border-radius:4px; padding:1px 7px; border-bottom:2px solid #241a38; font-family:inherit; }
 
   /* shop */
@@ -90,7 +121,7 @@
   .buybtn {
     font:inherit; font-weight:bold; font-size:clamp(13px, 2.6vw, 16px);
     background:#ffd94d; color:#3a2400; border:none; border-radius:999px; padding:8px 16px; cursor:pointer;
-    white-space:nowrap;
+    white-space:nowrap; min-height:40px; display:inline-flex; align-items:center;
   }
   .buybtn:disabled { background:#5a4a77; color:#cfc4e8; cursor:default; }
   .buybtn.selected { background:#2ec4b6; color:#06251f; }
@@ -180,6 +211,36 @@
   <div id="tip">Tip: a statue hiding behind a display case can't be seen — and won't freeze. Watch your corners!</div>
 </div>
 
+<script>
+/* Viewport pinning (studio standard): #wrap is position:fixed and is
+   continuously matched to window.visualViewport — height, width and
+   offsets — so the game column always sits exactly inside the visible
+   area no matter what the browser chrome does. Also publishes the
+   pinned content height as --vvh for the stage sizing calc. */
+(function () {
+  var wrap = document.getElementById('wrap');
+  if (!wrap) return;
+  function pin() {
+    var vv = window.visualViewport, h, w, t = 0, l = 0;
+    if (vv) { h = vv.height; w = vv.width; t = vv.offsetTop; l = vv.offsetLeft; }
+    else { h = window.innerHeight; w = window.innerWidth; }
+    wrap.style.width = w + 'px';
+    wrap.style.height = h + 'px';
+    wrap.style.top = t + 'px';
+    wrap.style.left = l + 'px';
+    var cs = getComputedStyle(wrap);
+    var pv = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    document.documentElement.style.setProperty('--vvh', Math.max(0, h - pv) + 'px');
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', pin);
+    window.visualViewport.addEventListener('scroll', pin);
+  }
+  window.addEventListener('resize', pin);
+  window.addEventListener('orientationchange', pin);
+  pin();
+})();
+</script>
 <script src="game.js"></script>
 </body>
 </html>
