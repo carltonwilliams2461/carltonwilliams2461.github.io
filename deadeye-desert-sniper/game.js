@@ -399,7 +399,7 @@ let state = 'menu';            // menu | brief | playing | paused | summary | fa
 let shopReturn = 'menu';
 let spec = null;               // current contract spec
 let figures = [];              // live figures in the world
-let particles = [], tracers = [], splats = [], dust = [];
+let particles = [], tracers = [], splats = [], dust = [], pools = [];
 let camX = WORLD_W / 2, camY = 430;
 let zoomIdx = 0;               // index into ZOOMS (clamped by maxZoom)
 let timeNow = 0;               // seconds, game clock (menu anim uses it too)
@@ -481,7 +481,7 @@ function setupContract(n) {
   spec = contractSpec(n);
   const scene = SCENES[spec.scene];
   const rng = mulberry32(n * 31337 + 7);
-  figures = []; particles = []; tracers = []; splats = [];
+  figures = []; particles = []; tracers = []; splats = []; pools = [];
   score = 0; shotsFired = 0; kills = 0; headshots = 0;
   integrity = 100; cracks = 0; ammo = 5; boltT = 0; reloadT = 0; recoil = 0;
   breath = 1; holding = false; breathHeldT = 0;
@@ -613,14 +613,32 @@ function enemyShot(f, dmg, hitChance) {
 }
 
 /* ---------------- effects ---------------- */
+/* Blood, tuned to READ on a phone screen (Carlton's playtest note):
+   a fat droplet burst + a red mist + an instant impact flash at the
+   hit point, a stain blooming on the figure, and — on a kill — a
+   pool that forms under the body and stays for the whole contract.
+   Particles live in world space, so the burst automatically scales
+   with the scope: at 8x it fills the glass. Flat-shaded game blood,
+   never photoreal. */
 function spawnBlood(x, y, big) {
-  const n = big ? 26 : 14;
+  const n = big ? 22 : 14, mist = big ? 8 : 5;
   for (let i = 0; i < n; i++) {
-    const a = rand(0, Math.PI * 2), sp = rand(20, big ? 190 : 110);
-    particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, life: rand(0.25, 0.6), t: 0, r: rand(1.5, big ? 4.5 : 3), col: Math.random() < 0.7 ? '#a4161a' : '#6e0f12' });
+    const a = rand(-0.5, Math.PI + 0.5), sp = rand(30, big ? 240 : 155);
+    particles.push({ x, y, vx: Math.cos(a) * sp, vy: -Math.abs(Math.sin(a)) * sp * 0.65 - rand(10, 60), life: rand(0.35, 0.75), t: 0, r: rand(2.2, big ? 6 : 4.6), col: Math.random() < 0.65 ? '#b01a1e' : '#7d1013' });
   }
+  for (let i = 0; i < mist; i++) {
+    particles.push({ x: x + rand(-4, 4), y: y + rand(-4, 4), vx: rand(-26, 26), vy: rand(-32, -4), life: rand(0.25, 0.45), t: 0, r: rand(6, big ? 13 : 10), col: 'rgba(164,22,26,0.30)', mist: true });
+  }
+  particles.push({ x, y, vx: 0, vy: 0, life: 0.13, t: 0, r: big ? 16 : 12, col: '#d21f26', flash: true });
   splats.push({ x, y, r: rand(6, big ? 15 : 10), t: 0, life: 5 });
   if (splats.length > 24) splats.shift();
+}
+/* A kill leaves a pool: grows to full size over ~a second, then
+   persists for the rest of the contract (capped — oldest shift out). */
+function spawnPool(f) {
+  const h = figureHeight(f);
+  pools.push({ x: f.x + rand(-4, 4), y: f.y + 2, r: 0, rT: h * rand(0.40, 0.50), t: 0, grow: rand(0.8, 1.2) });
+  if (pools.length > 40) pools.shift();
 }
 function spawnDustPuff(x, y) {
   for (let i = 0; i < 8; i++) particles.push({ x: x + rand(-6, 6), y: y + rand(-4, 4), vx: rand(-25, 25), vy: rand(-45, -8), life: rand(0.3, 0.7), t: 0, r: rand(2, 5), col: 'rgba(214,164,96,0.8)' });
@@ -636,8 +654,9 @@ function spawnTracerTo(ix, iy) {
   tracers.push({ x0: camX, y0: camY + 330, x1: ix, y1: iy, t: 0, life: 0.3, enemy: false });
 }
 function updateEffects(dt) {
-  for (const p of particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 300 * dt; }
+  for (const p of particles) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.mist ? 30 : 460) * dt; }
   particles = particles.filter(p => p.t < p.life);
+  for (const p of pools) { p.t += dt; const k = Math.min(1, p.t / p.grow); p.r = p.rT * (1 - (1 - k) * (1 - k)); }
   for (const t of tracers) t.t += dt;
   tracers = tracers.filter(t => t.t < t.life);
   for (const s of splats) s.t += dt;
@@ -699,6 +718,7 @@ function fire() {
   } else if (res.result === 'civilian') {
     res.figure.dead = true;
     spawnBlood(imp.x, imp.y, false);
+    spawnPool(res.figure);
     save.stats.civFails++;
     failContract('A civilian went down. That round ends careers — contract terminated.');
   } else if (res.result === 'cover') {
@@ -714,9 +734,14 @@ function fire() {
 }
 function applyHit(f, part, imp) {
   alertPack(imp.x);
+  // wound stain: stored in figure units (100 = full height) so it
+  // rides the figure at any zoom/crouch and blooms while woundT runs
+  const fh = figureHeight(f);
+  f.stain = { x: clamp((imp.x - f.x) * 100 / fh, -16, 16), y: clamp(-(f.y - imp.y) * 100 / fh, -97, -42), r: part === 'head' ? 10 : 13 };
   if (part === 'head') {
     f.hp = 0; f.dead = true;
     spawnBlood(imp.x, imp.y, true);
+    spawnPool(f);
     SFX.headshot(); lastHitT = timeNow;
     kills++; headshots++; save.stats.kills++; save.stats.headshots++;
     const pts = f.kind === 'priority' ? 400 : 250;
@@ -732,6 +757,7 @@ function applyHit(f, part, imp) {
     SFX.hitmark(); lastHitT = timeNow;
     if (f.hp <= 0) {
       f.dead = true;
+      spawnPool(f);
       kills++; save.stats.kills++;
       const pts = f.kind === 'priority' ? 200 : 100;
       score += pts;
@@ -1060,32 +1086,225 @@ function drawProp(pr) {
   ctx.restore();
 }
 
-const KIND_STYLE = {
-  merc:     { cloth: '#6b6242', vest: '#47412e', helmet: '#57543a', skin: '#c89878' },
-  shooter:  { cloth: '#54443a', vest: '#33291f', helmet: '#3f3428', skin: '#b0825e' },
-  counter:  { cloth: '#3a4034', vest: '#2c3324', helmet: '#46523a', skin: '#c89878' },
-  priority: { cloth: '#6b6242', vest: '#5a2d20', helmet: '#7a2020', skin: '#d8a87e' },
-  civilian: { cloth: '#b8542f', vest: null,      helmet: null,      skin: '#a8744c' }
+/* ---------------- figures: fleshed-out sprites ----------------
+   Carlton's playtest verdict on the first build: "the men look like
+   stick figures — I can't tell who I'm shooting." So figures are
+   now SOLID people, pre-rendered once to offscreen sprites (upper
+   body + head + arms + rifle baked; legs stay dynamic tapered
+   quads so the walk/crouch animation survives). The read is
+   unmistakable at 1x and 8x alike:
+   - HOSTILES: helmet, tac vest, a real rifle shape, desert kit —
+     and ONE marker on every one of them: a bright RED armband and
+     a RED stripe across the helmet.
+   - CIVILIANS: no helmet, no weapon, bright clothes (white robe /
+     light-blue shirt), upright stroll, one carries a basket.
+   Sprites are painted in "figure units": 100 units = full figure
+   height, head centre at -88 (r 13) — exactly the headBox/bodyBox
+   geometry, so hit resolution never moved. */
+const SPRITE_DEFS = {
+  merc:     { armed: true,  marker: 'redband', cloth: '#6b6242', clothD: '#524b32', vest: '#47412e', vestD: '#332e20', helmet: '#57543a', skin: '#c89878', pants: '#4c4433' },
+  shooter:  { armed: true,  marker: 'redband', cloth: '#54443a', clothD: '#40332a', vest: '#33291f', vestD: '#241c14', helmet: '#3f3428', skin: '#b0825e', pants: '#3d3226' },
+  counter:  { armed: true,  marker: 'redband', cloth: '#3a4034', clothD: '#2c3128', vest: '#2c3324', vestD: '#1f2519', helmet: '#46523a', skin: '#c89878', pants: '#2e3328', ghillie: true, longGun: true },
+  priority: { armed: true,  marker: 'redband', cloth: '#6b6242', clothD: '#524b32', vest: '#5a2d20', vestD: '#422015', helmet: '#7a2020', skin: '#d8a87e', pants: '#4c4433' },
+  civRobe:   { armed: false, marker: null, cloth: '#e9e3d3', clothD: '#cfc6ae', skin: '#a8744c', pants: '#5a4632' },
+  civShirt:  { armed: false, marker: null, cloth: '#7fa8c9', clothD: '#6790b3', skin: '#8a5f3a', pants: '#8a6f4d' },
+  civBasket: { armed: false, marker: null, cloth: '#d8cf6a', clothD: '#bcb254', skin: '#6e4a2c', pants: '#7a6248', basket: true }
 };
+function spriteKeyFor(f) {
+  if (f.kind !== 'civilian') return f.kind;
+  return f.seed < 0.34 ? 'civRobe' : (f.seed < 0.67 ? 'civShirt' : 'civBasket');
+}
+let figureSprites = null;      // key -> { stand, dead } offscreen canvases
+function figureSprite(f) {
+  const key = spriteKeyFor(f);
+  if (!figureSprites) buildFigureSprites();
+  const s = figureSprites[key];
+  return { key, def: SPRITE_DEFS[key], stand: s.stand, dead: s.dead };
+}
+function buildFigureSprites() {
+  figureSprites = {};
+  for (const key of Object.keys(SPRITE_DEFS)) {
+    figureSprites[key] = { stand: paintFigureSprite(key, false), dead: paintFigureSprite(key, true) };
+  }
+  return figureSprites;
+}
+/* tapered limb segment as a filled quad — volume, not a line */
+function limbQuad(c, x0, y0, x1, y1, w0, w1, col) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy) || 1;
+  const nx = -dy / len, ny = dx / len;
+  c.fillStyle = col;
+  c.beginPath();
+  c.moveTo(x0 + nx * w0 / 2, y0 + ny * w0 / 2);
+  c.lineTo(x1 + nx * w1 / 2, y1 + ny * w1 / 2);
+  c.lineTo(x1 - nx * w1 / 2, y1 - ny * w1 / 2);
+  c.lineTo(x0 - nx * w0 / 2, y0 - ny * w0 / 2);
+  c.closePath(); c.fill();
+}
+function paintFigureSprite(key, dead) {
+  const def = SPRITE_DEFS[key];
+  const S = 4;                                   // px per figure unit
+  const c = document.createElement('canvas');
+  if (dead) { c.width = 136 * S; c.height = 46 * S; }
+  else { c.width = 132 * S; c.height = 112 * S; }
+  const g = c.getContext('2d');
+  if (dead) { g.translate(68 * S, 38 * S); g.scale(S, S); paintFallen(g, def, key); }
+  else { g.translate(66 * S, 108 * S); g.scale(S, S); paintStanding(g, def, key); }
+  return c;
+}
+/* standing upper body: hips (-46) to head top (-101), facing +x */
+function paintStanding(g, def, key) {
+  const robe = key === 'civRobe';
+  // garment / torso — wide shoulders tapering to the waist
+  g.fillStyle = def.cloth;
+  g.beginPath();
+  if (robe) {
+    g.moveTo(-16, -77); g.lineTo(16, -77); g.lineTo(21, -3); g.lineTo(-21, -3); g.closePath(); g.fill();
+    g.fillStyle = def.clothD;                       // shade wedge
+    g.beginPath(); g.moveTo(4, -77); g.lineTo(16, -77); g.lineTo(21, -3); g.lineTo(6, -3); g.closePath(); g.fill();
+    g.fillStyle = '#b8a06a';                        // sash belt
+    g.fillRect(-18.5, -47, 37, 4.5);
+  } else {
+    g.moveTo(-18.5, -78); g.lineTo(18.5, -78); g.lineTo(13.5, -44); g.lineTo(-13.5, -44); g.closePath(); g.fill();
+    g.fillStyle = def.clothD;                       // shade wedge
+    g.beginPath(); g.moveTo(5, -78); g.lineTo(18.5, -78); g.lineTo(13.5, -44); g.lineTo(5, -44); g.closePath(); g.fill();
+  }
+  if (def.armed) {
+    // tac vest with mag pouches
+    g.fillStyle = def.vest;
+    g.beginPath(); g.moveTo(-14, -75); g.lineTo(14, -75); g.lineTo(12, -47); g.lineTo(-12, -47); g.closePath(); g.fill();
+    g.fillStyle = def.vestD;
+    for (const px of [-10.5, -3.5, 3.5]) g.fillRect(px, -61, 6.4, 10);
+    g.fillRect(-12, -70, 24, 2.6);                  // chest strap
+    g.fillStyle = 'rgba(255,255,255,0.10)'; g.fillRect(-14, -75, 28, 2.2);
+    // rear arm with THE red armband — the hostile marker
+    limbQuad(g, -16, -75, -23, -54, 8, 6, def.cloth);
+    g.fillStyle = '#d21f26';
+    g.save(); g.translate(-20.6, -63); g.rotate(0.32); g.fillRect(-4.6, -4, 9.2, 8); g.restore();
+    g.fillStyle = def.skin; g.beginPath(); g.arc(-23.5, -51, 3.4, 0, 7); g.fill();
+    // forward arm reaching to the rifle grip
+    limbQuad(g, 16, -75, 27, -66, 8, 6, def.cloth);
+    limbQuad(g, 27, -66, 33, -69, 6, 5, def.clothD);
+    g.fillStyle = def.skin; g.beginPath(); g.arc(33.5, -69, 3.2, 0, 7); g.fill();
+    paintRifle(g, def);
+  } else if (robe) {
+    // sleeves run down the robe's edge, hands peeking out
+    limbQuad(g, -15, -74, -19.5, -34, 8.5, 7, def.clothD);
+    limbQuad(g, 15, -74, 19.5, -34, 8.5, 7, def.cloth);
+    g.fillStyle = def.skin;
+    g.beginPath(); g.arc(-19.5, -31, 3.3, 0, 7); g.arc(19.5, -31, 3.3, 0, 7); g.fill();
+  } else {
+    // civilian arms hang loose at the sides
+    limbQuad(g, -16.5, -75, -20, -49, 7.5, 5.5, def.clothD);
+    limbQuad(g, 16.5, -75, 20, -49, 7.5, 5.5, def.cloth);
+    g.fillStyle = def.skin;
+    g.beginPath(); g.arc(-20, -46.5, 3.3, 0, 7); g.arc(20, -46.5, 3.3, 0, 7); g.fill();
+    if (def.basket) {
+      // woven basket on the rear arm, cloth bundle on top
+      g.strokeStyle = '#8a5f24'; g.lineWidth = 2.4;
+      g.beginPath(); g.arc(-26, -44, 7.5, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+      g.fillStyle = '#a8792f';
+      g.beginPath(); g.moveTo(-34, -44); g.lineTo(-18, -44); g.lineTo(-20.5, -31); g.lineTo(-31.5, -31); g.closePath(); g.fill();
+      g.strokeStyle = '#7c5c33'; g.lineWidth = 1.1;
+      g.beginPath(); g.moveTo(-33, -39.5); g.lineTo(-19, -39.5); g.moveTo(-32, -35); g.lineTo(-20, -35); g.stroke();
+      g.fillStyle = '#c94f38'; g.beginPath(); g.ellipse(-26, -45.5, 6.4, 3.4, 0, 0, 7); g.fill();
+    }
+  }
+  // neck + head
+  g.fillStyle = def.skin; g.fillRect(-4, -83, 8, 6);
+  g.beginPath(); g.arc(0, -88, 12.6, 0, 7); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.13)'; g.beginPath(); g.arc(3.5, -84.5, 8.6, 0, 7); g.fill();   // jaw shade
+  g.fillStyle = def.skin; g.beginPath(); g.arc(-1.5, -88.5, 11.4, 0, 7); g.fill();
+  if (def.armed) {
+    // helmet dome + brim + THE red stripe
+    g.fillStyle = def.helmet;
+    g.beginPath(); g.arc(0, -89, 14.4, Math.PI * 0.96, Math.PI * 2.04); g.closePath(); g.fill();
+    g.fillRect(-16, -90.6, 32, 3.6);
+    g.strokeStyle = '#d21f26'; g.lineWidth = 4.4;
+    g.beginPath(); g.arc(0, -89, 13.4, Math.PI * 1.18, Math.PI * 1.82); g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(10.5, -82); g.lineTo(12.5, -76); g.stroke();                     // chin strap
+    if (def.ghillie) {
+      g.strokeStyle = '#55663f'; g.lineWidth = 2;
+      for (let i = -3; i <= 3; i++) { g.beginPath(); g.moveTo(i * 3.6, -101 + Math.abs(i)); g.lineTo(i * 4.4, -92 + Math.abs(i) * 0.6); g.stroke(); }
+    }
+  } else if (key === 'civRobe') {
+    g.fillStyle = '#f2ede0';                        // white headscarf + tail
+    g.beginPath(); g.arc(0, -89.5, 13.6, Math.PI * 0.95, Math.PI * 2.05); g.closePath(); g.fill();
+    g.fillRect(-14.5, -90.5, 29, 3);
+    g.fillRect(-15, -90, 5.5, 15);
+  } else {
+    g.fillStyle = key === 'civBasket' ? '#3a2a18' : '#2e2018';
+    g.beginPath(); g.arc(0, -90, 12.9, Math.PI * 1.02, Math.PI * 1.98); g.closePath(); g.fill();
+    g.fillRect(-12.9, -91, 25.8, 3.4);
+  }
+}
+/* a real rifle silhouette: stock, receiver, mag, barrel, muzzle */
+function paintRifle(g, def) {
+  g.save();
+  g.translate(13, -63); g.rotate(-0.055);
+  g.fillStyle = '#241c10';
+  g.beginPath();                                  // stock + receiver
+  g.moveTo(-13, -2.5); g.lineTo(16, -3.4); g.lineTo(16, 1.8); g.lineTo(2, 2.4); g.lineTo(-4, 6.5); g.lineTo(-12, 4.5); g.closePath(); g.fill();
+  g.fillRect(14, -2.6, def.longGun ? 34 : 27, 3.1);                                     // barrel
+  g.fillRect(def.longGun ? 46 : 39, -3.4, 3.4, 4.8);                                    // muzzle brake
+  g.beginPath(); g.moveTo(3, 2.2); g.lineTo(8.6, 2.2); g.lineTo(7.2, 10.5); g.lineTo(2.2, 10); g.closePath(); g.fill();  // mag
+  g.fillRect(20, -6.4, 2.2, 3.8);                                                       // front sight post
+  g.fillStyle = '#3a2f1c'; g.fillRect(-11, -3.6, 24, 1.7);                              // top highlight
+  if (def.longGun) { g.fillStyle = '#171208'; g.fillRect(0, -8.2, 11, 3.6); g.fillRect(2, -4.6, 1.8, 2); g.fillRect(8, -4.6, 1.8, 2); }  // his scope
+  g.restore();
+}
+/* fallen body for the dead state — the pool forms under it */
+function paintFallen(g, def, key) {
+  const robe = key === 'civRobe';
+  g.fillStyle = def.pants;                        // legs stretched out
+  limbQuad(g, -16, -7, -42, -4.5, 8, 6.5, def.pants);
+  limbQuad(g, -14, -11, -40, -13.5, 8, 6.5, def.pants);
+  g.fillStyle = '#2c2113';                        // boots
+  g.beginPath(); g.ellipse(-46, -4, 5.6, 3, 0, 0, 7); g.ellipse(-44, -13.5, 5.6, 3, 0, 0, 7); g.fill();
+  g.fillStyle = def.cloth;                        // torso on its side
+  g.beginPath();
+  if (robe) { g.moveTo(-20, -1); g.lineTo(22, -2); g.lineTo(18, -15); g.lineTo(-16, -16); g.closePath(); }
+  else { g.moveTo(-19, -1.5); g.lineTo(20, -1.5); g.lineTo(22, -13); g.lineTo(-15, -14.5); g.closePath(); }
+  g.fill();
+  if (def.armed) {
+    g.fillStyle = def.vest; g.fillRect(-8, -13.5, 24, 11);
+    g.fillStyle = def.vestD; g.fillRect(-2, -12, 5.6, 8); g.fillRect(5, -12, 5.6, 8);
+    g.fillStyle = '#d21f26'; g.fillRect(13, -15.5, 8.5, 4.4);       // red band, still on the arm
+    limbQuad(g, 16, -12, 30, -19, 7, 5.5, def.cloth);               // sprawled arm
+  } else if (!robe) {
+    limbQuad(g, 16, -11, 31, -6, 7, 5.5, def.cloth);
+  }
+  g.fillStyle = def.skin; g.beginPath(); g.arc(31, -7.5, 11, 0, 7); g.fill();
+  if (def.armed) {
+    g.fillStyle = def.helmet;
+    g.beginPath(); g.arc(31, -8.5, 12.4, Math.PI * 0.9, Math.PI * 2.1); g.closePath(); g.fill();
+    g.strokeStyle = '#d21f26'; g.lineWidth = 3.8;
+    g.beginPath(); g.arc(31, -8.5, 11.4, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
+  } else if (robe) {
+    g.fillStyle = '#f2ede0'; g.beginPath(); g.arc(31, -9, 11.8, Math.PI * 0.95, Math.PI * 2.05); g.closePath(); g.fill();
+  } else {
+    g.fillStyle = '#2e2018'; g.beginPath(); g.arc(31, -9.5, 11.2, Math.PI * 1.05, Math.PI * 1.95); g.closePath(); g.fill();
+  }
+  if (def.armed) {                                // his rifle, dropped beside him
+    g.save(); g.translate(-4, -19); g.rotate(0.16); g.fillStyle = '#241c10';
+    g.fillRect(-16, -2, 46, 3.4); g.fillRect(28, -2.8, 3.2, 5);
+    g.beginPath(); g.moveTo(2, 1.2); g.lineTo(7.4, 1.2); g.lineTo(6.2, 8.6); g.lineTo(1.4, 8.2); g.closePath(); g.fill();
+    g.restore();
+  }
+}
 function drawFigure(f) {
   const z = ZOOMS[zoomIdx];
   const p = proj(f.x, f.y, 1);
-  if (p.x < -140 || p.x > VIEW_W + 140) return;
   const u = figureHeight(f) * z;              // full height on screen, px
-  const st = KIND_STYLE[f.kind];
+  if (p.x < -u * 0.85 || p.x > VIEW_W + u * 0.85) return;
+  const us = u / 100;                          // px per figure unit
+  const spr = figureSprite(f);
+  const def = spr.def;
   ctx.save();
   ctx.translate(p.x, p.y);
   if (f.dead) {
-    // fallen: body flat on the dirt, rifle beside it
-    ctx.fillStyle = 'rgba(90,10,10,0.55)';
-    ctx.beginPath(); ctx.ellipse(0, -2, u * 0.52, u * 0.10, 0, 0, 7); ctx.fill();
-    ctx.fillStyle = st.cloth;
-    ctx.fillRect(-u * 0.42, -u * 0.13, u * 0.72, u * 0.13);
-    ctx.fillStyle = st.skin;
-    ctx.beginPath(); ctx.arc(u * 0.38, -u * 0.07, u * 0.085, 0, 7); ctx.fill();
-    if (st.helmet) { ctx.fillStyle = st.helmet; ctx.beginPath(); ctx.arc(u * 0.38, -u * 0.09, u * 0.09, Math.PI, 0); ctx.fill(); }
-    ctx.strokeStyle = '#2c2113'; ctx.lineWidth = Math.max(1.2, u * 0.045);
-    ctx.beginPath(); ctx.moveTo(-u * 0.2, -u * 0.2); ctx.lineTo(u * 0.24, -u * 0.3); ctx.stroke();
+    // fallen sprite — the blood pool (drawn in drawWorld) spreads under it
+    ctx.drawImage(spr.dead, -68 * us, -38 * us, 136 * us, 46 * us);
     ctx.restore();
     return;
   }
@@ -1093,76 +1312,49 @@ function drawFigure(f) {
   ctx.fillStyle = 'rgba(40,20,5,0.35)';
   ctx.beginPath(); ctx.ellipse(0, 0, u * 0.30, u * 0.055, 0, 0, 7); ctx.fill();
   const moving = Math.abs(f.speed) > 1;
-  const swing = moving ? Math.sin(f.walkPhase) * u * 0.15 : 0;
-  const hipY = -u * 0.46, shoulderY = -u * 0.78;
+  const swing = moving ? Math.sin(f.walkPhase) * 15 : 0;      // figure units
   const tilt = f.woundT > 0 ? Math.sin(timeNow * 30) * 0.03 : (f.state === 'escape' ? f.dir * 0.10 : 0);
   ctx.rotate(tilt);
-  // legs
-  ctx.strokeStyle = f.kind === 'civilian' ? '#5a4632' : '#4c4433';
-  ctx.lineWidth = Math.max(1.4, u * 0.085); ctx.lineCap = 'round';
-  if (f.crouch) {
-    ctx.beginPath();
-    ctx.moveTo(0, hipY); ctx.lineTo(-u * 0.14, -u * 0.2); ctx.lineTo(-u * 0.1, 0);
-    ctx.moveTo(0, hipY); ctx.lineTo(u * 0.15, -u * 22 / 100); ctx.lineTo(u * 0.2, 0);
-    ctx.stroke();
+  // legs — dynamic tapered quads (the robe covers its wearer's)
+  if (spr.key === 'civRobe') {
+    ctx.fillStyle = '#4a3826';
+    ctx.beginPath(); ctx.ellipse(-7 * us, -1 * us, 5 * us, 2.4 * us, 0, 0, 7); ctx.ellipse(7 * us, -1 * us, 5 * us, 2.4 * us, 0, 0, 7); ctx.fill();
+  } else if (f.crouch) {
+    limbQuad(ctx, 4 * us, -46 * us, 16 * us, -20 * us, 8.5 * us, 7 * us, def.pants);
+    limbQuad(ctx, 16 * us, -20 * us, 10 * us, -1 * us, 7 * us, 6 * us, def.pants);
+    limbQuad(ctx, -4 * us, -46 * us, -15 * us, -24 * us, 8.5 * us, 7 * us, def.pants);
+    limbQuad(ctx, -15 * us, -24 * us, -19 * us, -1 * us, 7 * us, 6 * us, def.pants);
+    ctx.fillStyle = '#2c2113';
+    ctx.beginPath(); ctx.ellipse(10 * us, -1 * us, 5.4 * us, 2.6 * us, 0, 0, 7); ctx.ellipse(-19 * us, -1 * us, 5.4 * us, 2.6 * us, 0, 0, 7); ctx.fill();
   } else {
+    limbQuad(ctx, -6 * us, -46 * us, swing * us, -1 * us, 9 * us, 6.5 * us, def.pants);
+    limbQuad(ctx, 6 * us, -46 * us, -swing * us, -1 * us, 9 * us, 6.5 * us, def.pants);
+    ctx.fillStyle = '#2c2113';
+    ctx.beginPath(); ctx.ellipse(swing * us, -1 * us, 5.6 * us, 2.7 * us, 0, 0, 7); ctx.ellipse(-swing * us, -1 * us, 5.6 * us, 2.7 * us, 0, 0, 7); ctx.fill();
+  }
+  // upper body sprite (flipped to facing)
+  ctx.save();
+  ctx.scale(f.dir, 1);
+  ctx.drawImage(spr.stand, -66 * us, -108 * us, 132 * us, 112 * us);
+  ctx.restore();
+  // counter-sniper glint at his scope
+  if (f.kind === 'counter' && f.glintT > 0) {
+    const gx = f.dir * u * 0.19, gy = -u * 0.71;
+    ctx.strokeStyle = 'rgba(255,246,200,0.95)'; ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, hipY); ctx.lineTo(swing, 0);
-    ctx.moveTo(0, hipY); ctx.lineTo(-swing, 0);
+    ctx.moveTo(gx - 10, gy); ctx.lineTo(gx + 10, gy); ctx.moveTo(gx, gy - 10); ctx.lineTo(gx, gy + 10);
+    ctx.moveTo(gx - 7, gy - 7); ctx.lineTo(gx + 7, gy + 7); ctx.moveTo(gx + 7, gy - 7); ctx.lineTo(gx - 7, gy + 7);
     ctx.stroke();
   }
-  // torso
-  ctx.fillStyle = st.cloth;
-  ctx.fillRect(-u * 0.155, shoulderY, u * 0.31, hipY - shoulderY + u * 0.03);
-  if (st.vest) {
-    ctx.fillStyle = st.vest;
-    ctx.fillRect(-u * 0.135, shoulderY + u * 0.05, u * 0.27, u * 0.24);
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(-u * 0.135, shoulderY + u * 0.17, u * 0.27, u * 0.03);
-  }
-  if (f.kind === 'priority') { ctx.fillStyle = '#c1272d'; ctx.fillRect(u * 0.1, shoulderY + u * 0.04, u * 0.06, u * 0.12); } // red armband
-  if (f.woundT > 0) { ctx.fillStyle = 'rgba(164,22,26,0.85)'; ctx.beginPath(); ctx.arc(-u * 0.05, shoulderY + u * 0.14, u * 0.06, 0, 7); ctx.fill(); }
-  // arms + rifle (hostiles) or plain arms (civilians)
-  ctx.strokeStyle = st.cloth; ctx.lineWidth = Math.max(1.3, u * 0.07);
-  if (f.kind === 'civilian') {
-    ctx.beginPath();
-    ctx.moveTo(-u * 0.13, shoulderY + u * 0.03); ctx.lineTo(-u * 0.18, hipY + u * 0.08 + swing * 0.4);
-    ctx.moveTo(u * 0.13, shoulderY + u * 0.03); ctx.lineTo(u * 0.18, hipY + u * 0.08 - swing * 0.4);
-    ctx.stroke();
-    if (f.seed > 0.5) { ctx.fillStyle = '#8a6a2a'; ctx.fillRect(u * 0.16, hipY + u * 0.02, u * 0.09, u * 0.13); } // water jug
-  } else {
-    const aimA = f.kind === 'counter' && f.glintT > 0 ? -0.06 : 0.22;
-    ctx.beginPath(); ctx.moveTo(u * 0.1, shoulderY + u * 0.04); ctx.lineTo(u * 0.24 * f.dir, shoulderY + u * 0.16); ctx.stroke();
-    ctx.strokeStyle = '#241c10'; ctx.lineWidth = Math.max(1.4, u * 0.05);
-    const rLen = f.kind === 'counter' ? u * 0.62 : u * 0.46;
-    ctx.beginPath();
-    ctx.moveTo(-u * 0.1 * f.dir, shoulderY + u * 0.13);
-    ctx.lineTo(f.dir * rLen, shoulderY + u * 0.13 + rLen * aimA * f.dir * 0 + rLen * 0.22);
-    ctx.stroke();
-    if (f.kind === 'counter') { ctx.fillStyle = '#241c10'; ctx.fillRect(f.dir * u * 0.2 - 2, shoulderY + u * 0.05, u * 0.1, u * 0.045); } // his scope
-    if (f.glintT > 0) {
-      const gx = f.dir * rLen, gy = shoulderY + u * 0.13 + rLen * 0.22;
-      ctx.strokeStyle = 'rgba(255,246,200,0.95)'; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(gx - 10, gy); ctx.lineTo(gx + 10, gy); ctx.moveTo(gx, gy - 10); ctx.lineTo(gx, gy + 10);
-      ctx.moveTo(gx - 7, gy - 7); ctx.lineTo(gx + 7, gy + 7); ctx.moveTo(gx + 7, gy - 7); ctx.lineTo(gx - 7, gy + 7);
-      ctx.stroke();
-    }
-  }
-  // head + helmet / hair
-  const hb = headBox(f);
-  const hr = hb.r * z;
-  const headY = -u * 0.88;
-  ctx.fillStyle = st.skin;
-  ctx.beginPath(); ctx.arc(0, headY, hr, 0, 7); ctx.fill();
-  if (st.helmet) {
-    ctx.fillStyle = st.helmet;
-    ctx.beginPath(); ctx.arc(0, headY - hr * 0.12, hr * 1.08, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
-    ctx.fillRect(-hr * 1.15, headY - hr * 0.18, hr * 2.3, hr * 0.22);
-    if (f.kind === 'counter') { ctx.strokeStyle = '#55663f'; ctx.lineWidth = 1.6; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * hr * 0.4, headY - hr * 1.1); ctx.lineTo(i * hr * 0.5, headY - hr * 0.3); ctx.stroke(); } }
-  } else {
-    ctx.fillStyle = f.seed > 0.5 ? '#2e2018' : '#6e5636';
-    ctx.beginPath(); ctx.arc(0, headY - hr * 0.25, hr * 0.95, Math.PI, 0); ctx.fill();
+  // wound stain — blooms over the first quarter-second after the hit
+  if (f.stain && f.woundT > 0) {
+    const age = 1.4 - f.woundT;
+    const bloom = Math.min(1, age / 0.25);
+    const sr = f.stain.r * us * (0.45 + 0.55 * bloom);
+    ctx.fillStyle = 'rgba(125,16,19,0.88)';
+    ctx.beginPath(); ctx.ellipse(f.stain.x * us, f.stain.y * us, sr, sr * 0.82, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(94,10,13,0.95)';
+    ctx.beginPath(); ctx.ellipse(f.stain.x * us, f.stain.y * us, sr * 0.55, sr * 0.45, 0, 0, 7); ctx.fill();
   }
   ctx.restore();
   // priority diamond — intel marker floating over the mark
@@ -1176,6 +1368,7 @@ function drawFigure(f) {
     ctx.restore();
   }
 }
+
 function drawWorld() {
   const scene = SCENES[spec ? spec.scene : 'canyon'];
   drawSkyAndRidges(scene);
@@ -1187,6 +1380,16 @@ function drawWorld() {
     const p = proj(s.x, s.y, 1);
     ctx.fillStyle = 'rgba(140,16,20,' + (0.65 * (1 - s.t / s.life)) + ')';
     ctx.beginPath(); ctx.ellipse(p.x, p.y, s.r * ZOOMS[zoomIdx], s.r * 0.4 * ZOOMS[zoomIdx], 0, 0, 7); ctx.fill();
+  }
+  // blood pools under the fallen — they stay for the whole contract
+  for (const p of pools) {
+    const pp = proj(p.x, p.y, 1);
+    const r = p.r * ZOOMS[zoomIdx];
+    if (r < 0.5) continue;
+    ctx.fillStyle = 'rgba(94,10,13,0.88)';
+    ctx.beginPath(); ctx.ellipse(pp.x, pp.y, r, r * 0.38, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(125,16,19,0.55)';
+    ctx.beginPath(); ctx.ellipse(pp.x - r * 0.15, pp.y - r * 0.05, r * 0.62, r * 0.24, 0, 0, 7); ctx.fill();
   }
   // drifting dust (the free wind gauge)
   ctx.fillStyle = 'rgba(255,230,170,0.5)';
@@ -1211,10 +1414,22 @@ function drawWorld() {
       ctx.beginPath();
       ctx.moveTo(sp.x - r, sp.y); ctx.lineTo(sp.x + r, sp.y); ctx.moveTo(sp.x, sp.y - r); ctx.lineTo(sp.x, sp.y + r);
       ctx.stroke();
+    } else if (p.flash) {
+      // the instant red star at the impact point — reads at any zoom
+      const r = p.r * ZOOMS[zoomIdx];
+      ctx.strokeStyle = 'rgba(210,31,38,' + k + ')'; ctx.lineWidth = 2.6;
+      ctx.beginPath();
+      ctx.moveTo(sp.x - r, sp.y); ctx.lineTo(sp.x + r, sp.y); ctx.moveTo(sp.x, sp.y - r * 0.7); ctx.lineTo(sp.x, sp.y + r * 0.7);
+      ctx.moveTo(sp.x - r * 0.7, sp.y - r * 0.5); ctx.lineTo(sp.x + r * 0.7, sp.y + r * 0.5); ctx.moveTo(sp.x + r * 0.7, sp.y - r * 0.5); ctx.lineTo(sp.x - r * 0.7, sp.y + r * 0.5);
+      ctx.stroke();
+      ctx.globalAlpha = k;
+      ctx.fillStyle = '#7d1013';
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, r * 0.3, 0, 7); ctx.fill();
+      ctx.globalAlpha = 1;
     } else {
-      ctx.globalAlpha = Math.max(0, k);
+      ctx.globalAlpha = Math.max(0, p.mist ? 0.55 * k : k);
       ctx.fillStyle = p.col;
-      ctx.beginPath(); ctx.arc(sp.x, sp.y, p.r * ZOOMS[zoomIdx] * 0.7, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(sp.x, sp.y, p.r * ZOOMS[zoomIdx], 0, 7); ctx.fill();
       ctx.globalAlpha = 1;
     }
   }
@@ -1657,6 +1872,9 @@ window.__deadeye = {
   get save() { return save; },
   get spec() { return spec; },
   get figures() { return figures; },
+  get particles() { return particles; },
+  get pools() { return pools; },
+  spawnBlood, spawnPool, updateEffects, spriteDefs: SPRITE_DEFS, figureSprite, spriteKeyFor,
   get score() { return score; },
   get kills() { return kills; },
   get headshots() { return headshots; },
