@@ -34,7 +34,7 @@
     font-size:clamp(12px, 2.4vw, 17px); font-weight:bold;
   }
   #hud .spacer { flex:1; }
-  .pill { background:#16202c; border:2px solid #2e4356; border-radius:999px; padding:2px 12px; white-space:nowrap; }
+  .pill { background:linear-gradient(180deg,#1d2c3e,#121d2a); border:2px solid #2e4356; border-radius:999px; padding:2px 12px; white-space:nowrap; box-shadow:inset 0 1px 0 rgba(255,255,255,.08), 0 2px 8px rgba(0,0,0,.35); }
   #bones { color:#ffe9a8; }
   #workersLbl { color:#ffd76a; }
   #shardLbl { color:#bfe3ff; }
@@ -42,7 +42,8 @@
   #gateOuter { width:110px; height:12px; background:#241a20; border:2px solid #4a3542; border-radius:6px; overflow:hidden; }
   #gateBar { height:100%; width:100%; background:linear-gradient(90deg,#7ddc6a,#c6f24e); transition:width .25s; }
   .iconbtn {
-    background:#1d2a38; color:#eef3e2; border:2px solid #3a5a74; border-radius:10px;
+    background:linear-gradient(180deg,#263850,#182635); color:#eef3e2; border:2px solid #3a5a74; border-radius:10px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.09), 0 2px 8px rgba(0,0,0,.35);
     font-size:clamp(13px, 2.4vw, 17px); padding:3px 11px; cursor:pointer; line-height:1.25; font-weight:bold;
     min-width:40px; min-height:40px; display:inline-flex; align-items:center; justify-content:center;
   }
@@ -53,7 +54,7 @@
   }
   #phaseLbl { opacity:.92; }
   #callWaveBtn {
-    background:#ffd76a; color:#3a2400; border:none; border-radius:999px; font:inherit; font-weight:bold;
+    background:linear-gradient(180deg,#ffe08a,#ffc94d); color:#3a2400; border:none; border-radius:999px; font:inherit; font-weight:bold;
     padding:5px 18px; cursor:pointer; box-shadow:0 3px 0 #b97e1e; min-height:40px;
   }
   #callWaveBtn:active { transform:translateY(2px); box-shadow:0 1px 0 #b97e1e; }
@@ -70,10 +71,11 @@
   canvas {
     display:block; width:100%; aspect-ratio: 960 / 600; background:#0d1524;
     border:3px solid #33506b; border-radius:12px; touch-action:none;
+    box-shadow:0 14px 44px rgba(0,0,0,.6), inset 0 0 0 1px rgba(160,200,240,.07);
   }
   .overlay {
     position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-    text-align:center; background:rgba(6,9,16,.88); border-radius:12px; padding:16px; gap:10px; overflow-y:auto;
+    text-align:center; background:radial-gradient(130% 100% at 50% 0%, rgba(17,27,45,.90), rgba(5,8,14,.94)); border-radius:12px; padding:16px; gap:10px; overflow-y:auto;
   }
   /* safe centering: auto margins center the menu when it fits, and fall
      back to top-aligned (fully scrollable) when it doesn't — plain
@@ -91,8 +93,8 @@
   .coverart { width:min(90%, 540px); border-radius:10px; border:2px solid #3a5a74; box-shadow:0 10px 34px rgba(0,0,0,.65); }
   button.cta {
     font:inherit; font-weight:bold; font-size:clamp(16px, 3.4vw, 22px);
-    background:#ffd76a; color:#3a2400; border:none; border-radius:999px;
-    padding:12px 34px; cursor:pointer; box-shadow:0 4px 0 #b97e1e;
+    background:linear-gradient(180deg,#ffe08a,#ffc94d); color:#3a2400; border:none; border-radius:999px;
+    padding:12px 34px; cursor:pointer; box-shadow:0 4px 0 #b97e1e, inset 0 1px 0 rgba(255,255,255,.55);
   }
   button.cta:active { transform:translateY(2px); box-shadow:0 2px 0 #b97e1e; }
   button.ghost {
@@ -118,8 +120,9 @@
 
   /* bottom sheets (build / turret) */
   .sheet {
-    position:absolute; left:0; right:0; bottom:0; background:rgba(8,13,22,.96);
+    position:absolute; left:0; right:0; bottom:0; background:linear-gradient(180deg, rgba(15,24,38,.97), rgba(7,11,19,.98));
     border-top:3px solid #3a5a74; border-radius:0 0 12px 12px; padding:12px 14px 14px;
+    box-shadow:0 -10px 30px rgba(0,0,0,.5);
     display:flex; flex-direction:column; gap:10px; align-items:center;
     max-height:100%; overflow-y:auto;
   }
@@ -127,8 +130,9 @@
   .sheet p { font-size:clamp(12px, 2.5vw, 15px); line-height:1.4; text-align:center; max-width:640px; }
   .cards { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .card {
-    width:172px; background:#14222f; border:2px solid #33506b; border-radius:12px; padding:10px;
+    width:172px; background:linear-gradient(180deg,#1b2c40,#111c2a); border:2px solid #33506b; border-radius:12px; padding:10px;
     text-align:left; cursor:pointer; color:#eef3e2; font:inherit;
+    box-shadow:0 4px 14px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
   }
   .card:hover { border-color:#ffd76a; }
   .card:disabled { opacity:.45; cursor:default; }
@@ -139,16 +143,18 @@
   /* upgrades list */
   .upglist { display:flex; flex-direction:column; gap:9px; width:min(94%, 600px); }
   .upg {
-    display:flex; align-items:center; gap:10px; background:#14222f; border:2px solid #33506b;
+    display:flex; align-items:center; gap:10px; background:linear-gradient(180deg,#1b2c40,#111c2a); border:2px solid #33506b;
     border-radius:12px; padding:9px 12px; text-align:left;
+    box-shadow:0 4px 14px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.06);
   }
   .upg .info { flex:1; }
   .upg .uname { font-weight:bold; }
   .upg .udesc { font-size:12.5px; opacity:.88; line-height:1.35; }
   .upg .pips { color:#ffd76a; letter-spacing:2px; font-size:13px; }
   .upg button {
-    font:inherit; font-weight:bold; background:#ffd76a; color:#3a2400; border:none; border-radius:999px;
+    font:inherit; font-weight:bold; background:linear-gradient(180deg,#ffe08a,#ffc94d); color:#3a2400; border:none; border-radius:999px;
     padding:8px 16px; cursor:pointer; white-space:nowrap; min-height:40px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55);
   }
   .upg button:disabled { opacity:.45; cursor:default; }
 
