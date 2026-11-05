@@ -14,13 +14,23 @@
   html, body {
     background:#070a12; color:#eef3e2;
     font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
-    height:100%; overflow:hidden;
+    height:100%; height:100dvh; overflow:hidden; overscroll-behavior:none;
     -webkit-user-select:none; user-select:none;
     -webkit-tap-highlight-color: transparent;
   }
-  #wrap { height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:8px; }
+  /* The game is the entire page: #wrap is fixed and the pinning script
+     keeps it sized/offset to window.visualViewport, so the column
+     always sits exactly inside the visible area (mobile browser bars
+     can never slide it off-screen). CSS size here is the pre-JS state. */
+  #wrap {
+    position:fixed; top:0; left:0; width:100%;
+    height:100%; height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:6px;
+    padding:max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    touch-action:none; overscroll-behavior:none;
+  }
   #hud {
-    width:min(96vw, 960px); display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    width:min(100%, 960px); display:flex; align-items:center; gap:10px; flex-wrap:wrap;
     font-size:clamp(12px, 2.4vw, 17px); font-weight:bold;
   }
   #hud .spacer { flex:1; }
@@ -34,28 +44,42 @@
   .iconbtn {
     background:#1d2a38; color:#eef3e2; border:2px solid #3a5a74; border-radius:10px;
     font-size:clamp(13px, 2.4vw, 17px); padding:3px 11px; cursor:pointer; line-height:1.25; font-weight:bold;
+    min-width:40px; min-height:40px; display:inline-flex; align-items:center; justify-content:center;
   }
   .iconbtn:active { transform:translateY(1px); }
   #waveBar {
-    width:min(96vw, 960px); display:flex; align-items:center; gap:10px;
+    width:min(100%, 960px); display:flex; align-items:center; gap:10px;
     font-size:clamp(12px, 2.4vw, 16px);
   }
   #phaseLbl { opacity:.92; }
   #callWaveBtn {
     background:#ffd76a; color:#3a2400; border:none; border-radius:999px; font:inherit; font-weight:bold;
-    padding:5px 18px; cursor:pointer; box-shadow:0 3px 0 #b97e1e;
+    padding:5px 18px; cursor:pointer; box-shadow:0 3px 0 #b97e1e; min-height:40px;
   }
   #callWaveBtn:active { transform:translateY(2px); box-shadow:0 1px 0 #b97e1e; }
   #callWaveBtn:disabled { opacity:.4; cursor:default; box-shadow:none; }
-  #stage { position:relative; width:min(96vw, 960px); }
+  /* Stage fits by width AND height: the calc() term caps the stage so
+     canvas (960:600) + HUD (may wrap to two rows) + wave bar + tip
+     never exceed the pinned visible height (--vvh comes from the
+     pinning script / visualViewport; 100dvh is the no-JS fallback).
+     First width line is the fallback for browsers without dvh/var. */
+  #stage {
+    position:relative; width:min(100%, 960px);
+    width:min(100%, 960px, calc((var(--vvh, 100dvh) - 184px) * 1.6));
+  }
   canvas {
     display:block; width:100%; aspect-ratio: 960 / 600; background:#0d1524;
     border:3px solid #33506b; border-radius:12px; touch-action:none;
   }
   .overlay {
-    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
     text-align:center; background:rgba(6,9,16,.88); border-radius:12px; padding:16px; gap:10px; overflow-y:auto;
   }
+  /* safe centering: auto margins center the menu when it fits, and fall
+     back to top-aligned (fully scrollable) when it doesn't — plain
+     justify-content:center clips the top of tall menus out of reach */
+  .overlay > :first-child { margin-top:auto; }
+  .overlay > :last-child { margin-bottom:auto; }
   .overlay h1 {
     font-size:clamp(34px, 7.6vw, 58px); letter-spacing:2px; color:#eaf7d0;
     text-shadow:0 0 22px rgba(140,220,255,.55), 0 3px 0 #274b63, 0 8px 24px rgba(0,0,0,.8);
@@ -80,6 +104,16 @@
   .btnrow { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
   .hidden { display:none !important; }
   #tip { font-size:clamp(12px, 2.4vw, 15px); opacity:.8; text-align:center; max-width:960px; }
+  /* short viewports (landscape phones): chrome compacts — tighter
+     padding, capped cover art, smaller footer — but every label and
+     name stays fully visible; menus scroll internally if needed */
+  @media (max-height: 520px) {
+    #tip { font-size:11px; }
+    .overlay { padding:10px; gap:6px; }
+    .coverart { max-height:32vh; }
+    .card { padding:8px; }
+    .upg { padding:7px 10px; }
+  }
   kbd { background:#22384c; border-radius:4px; padding:1px 7px; border-bottom:2px solid #101c28; font-family:inherit; }
 
   /* bottom sheets (build / turret) */
@@ -87,6 +121,7 @@
     position:absolute; left:0; right:0; bottom:0; background:rgba(8,13,22,.96);
     border-top:3px solid #3a5a74; border-radius:0 0 12px 12px; padding:12px 14px 14px;
     display:flex; flex-direction:column; gap:10px; align-items:center;
+    max-height:100%; overflow-y:auto;
   }
   .sheet h3 { color:#ffd76a; font-size:clamp(16px, 3vw, 21px); font-family: Georgia, serif; letter-spacing:1px; }
   .sheet p { font-size:clamp(12px, 2.5vw, 15px); line-height:1.4; text-align:center; max-width:640px; }
@@ -113,7 +148,7 @@
   .upg .pips { color:#ffd76a; letter-spacing:2px; font-size:13px; }
   .upg button {
     font:inherit; font-weight:bold; background:#ffd76a; color:#3a2400; border:none; border-radius:999px;
-    padding:8px 16px; cursor:pointer; white-space:nowrap;
+    padding:8px 16px; cursor:pointer; white-space:nowrap; min-height:40px;
   }
   .upg button:disabled { opacity:.45; cursor:default; }
 
@@ -301,6 +336,36 @@
 
   <div id="tip">Graveyard Shift © C E Williams Games — the crew works while you sleep. 🦴</div>
 </div>
+<script>
+/* Viewport pinning (studio standard): #wrap is position:fixed and is
+   continuously matched to window.visualViewport — height, width and
+   offsets — so the game column always sits exactly inside the visible
+   area no matter what the browser chrome does. Also publishes the
+   pinned content height as --vvh for the stage sizing calc. */
+(function () {
+  var wrap = document.getElementById('wrap');
+  if (!wrap) return;
+  function pin() {
+    var vv = window.visualViewport, h, w, t = 0, l = 0;
+    if (vv) { h = vv.height; w = vv.width; t = vv.offsetTop; l = vv.offsetLeft; }
+    else { h = window.innerHeight; w = window.innerWidth; }
+    wrap.style.width = w + 'px';
+    wrap.style.height = h + 'px';
+    wrap.style.top = t + 'px';
+    wrap.style.left = l + 'px';
+    var cs = getComputedStyle(wrap);
+    var pv = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    document.documentElement.style.setProperty('--vvh', Math.max(0, h - pv) + 'px');
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', pin);
+    window.visualViewport.addEventListener('scroll', pin);
+  }
+  window.addEventListener('resize', pin);
+  window.addEventListener('orientationchange', pin);
+  pin();
+})();
+</script>
 <script src="game.js"></script>
 </body>
 </html>
