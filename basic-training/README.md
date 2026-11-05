@@ -9,13 +9,15 @@ standards, the impossible clocks — never the dark half: no slurs, no hazing
 violence, no weapons pointed at anyone.
 
 Vanilla JS + Canvas, no build step, no dependencies. All art is drawn in code
-(pre-rendered to offscreen canvases at boot); all sound is synthesized with
-WebAudio (barks are formant-ish saw bursts — no voice acting). **Flat folder
+(pre-rendered to offscreen canvases at boot); SFX are synthesized with
+WebAudio, and the drill sergeant's voice is **real recorded audio** —
+`bark-01..12.mp3` (the fail-flash barks) and `cadence.mp3` (the full
+day-pass cadence chain), generated with a deep male DS voice. **Flat folder
 by design**: the CrazyGames uploader flattens subfolders and breaks relative
 paths, so every file sits at the root and the game references bare filenames
 only (asset files: `cover.png`, the menu art; `ds-flash.jpg`, the photoreal
 fail-flash face; `ds-win.mp4` + `ds-win.jpg`, the day-pass cadence video
-and its poster still).
+and its poster still; the voice clips above).
 
 ## Controls
 
@@ -71,24 +73,33 @@ and a 3/4 angle) and compressed to 176 KB (`ds-flash.jpg`, 900×900). The
 tilt now applies **everywhere the DS appears**: the photo, the in-game
 cartoon DS sprites (hat group lowered + rotated, shadow band over the
 eyes, incl. the 2× flash fallback), and the PIL cover art. It lands
-with a **scale-punch** (1.3× → 1× in the first frames) + **screen shake**
-+ a 3-syllable bark for ~0.85 s, showing one line from a **12-line bark
-bank** ("DROP AND GIVE ME 25, NUMBNUTS!", "I'VE SEEN BETTER COORDINATION
-FROM A BAG OF HAMMERS!", …). Everything else in the game is cartoon —
+with a **scale-punch** (1.3× → 1× in the first frames) + **screen shake**,
+shows one line from a **12-line bark bank** ("DROP AND GIVE ME 25,
+NUMBNUTS!", "I'VE SEEN BETTER COORDINATION FROM A BAG OF HAMMERS!", …)
+— and the line is **spoken out loud** by the recorded DS voice
+(`bark-NN.mp3`, same index as the text; the flash now stays up for the
+length of the bark, 1.0–2.5 s). Everything else in the game is cartoon —
 that's the point: cartoon world, then a REAL face in yours. If the photo
 can't load (offline/blocked), the big 2× cartoon DS sprite is the
 fallback. The bank is a shuffled bag persisted in the save: **no line
-repeats until all 12 have cycled**. The flash is purely visual — timers
+repeats until all 12 have cycled** — audio and text ride the same dealt
+index, so they can never drift apart. The flash is purely visual — timers
 and input are untouched — and the push-up penalty beat follows as usual.
 
-**Honest note — the flash does not move (yet).** Carlton asked for the
-fail flash as a 1.5–2.5 s VIDEO (lunge, head-shake, mid-scream). Two
-image-to-video attempts were made on the winning still: the first
-drifted into a completely different man outdoors (character swap —
-unusable), the second was refused by the generator. Rather than fake
-motion, the flash ships as the new still + the existing scale-punch.
-Its win counterpart below DID animate cleanly, so the pair is currently:
-fail = photo flash, pass = cadence video.
+**The face MOVES and TALKS.** Carlton asked for the fail flash as a
+video (lunge, head-shake, mid-scream); the image-to-video route was
+tried twice — the first attempt drifted into a completely different man
+outdoors (character swap, unusable), the second was **refused by the
+generator, and that route is not retried**. So the movement is the
+photograph itself, animated programmatically on canvas: the lower face
+is re-drawn in horizontal strips with a progressive vertical stretch
+anchored at the mouth line (pixels at the seam don't move; displacement
+grows toward the chin), driven at 20 fps by the bark clip's **measured
+loudness envelope** — the mouth gapes on loud syllables and settles on
+quiet ones, while the whole face lunges and shakes in sync. jaw = 0 is
+the untouched photo, so the rest state can never distort. Frames at
+jaw 0 / 0.5 / 1.0 were rendered and inspected: no tear, no duplicated
+band, no monstrous frames — it's the same man, screaming harder.
 
 ## THE DAY-PASS CADENCE
 
@@ -107,10 +118,42 @@ SQUAD label, never part of the call:
 > 🗣️ DS: YOUR MAMA, YOUR DADDY, THE DOG, THE CAT, THE RAT WERE ALL HOME
 > WHEN YOU LEFT! → 📣 SQUAD: YOU'RE RIGHT! YOU'RE RIGHT!
 
-Calls also fire the synth bark; synthesized stomp drums (low sine drops
-+ noise snaps) march underneath at step tempo. The chain is the primary
-cadence and stays intact in this order. **Tap the video to skip**; the
-pop also stops itself when you leave the day-complete screen.
+**The cadence is now real recorded audio too** (`cadence.mp3`, 8.7 s):
+the DS call lines in the same deep male voice, the squad's "YOU'RE
+RIGHT!" answers **group-processed** (five layered takes — pitch-shifted,
+offset, room-echoed — so it sounds like a formation answering, not one
+man), assembled call → response → call → response → full chain →
+double response in Carlton's exact order, with synthesized marching
+stomps mixed underneath at step tempo. Each segment was built into an
+exact time slot (`CADENCE_STEP_DUR` = 1.15 / 0.90 / 1.15 / 0.90 / 3.10 /
+1.50 s), and the ribbon steps on those slot boundaries, so the words on
+screen land with the voices. The chain is the primary cadence and stays
+intact in this order. **Tap the video to skip**; the pop also stops
+itself — audio included — when you leave the day-complete screen. Mute
+(in-game toggle or the portal's `muteAudio`) silences barks and cadence
+together; where no Audio exists at all, the old synth bark/stomps remain
+as the fallback.
+
+## THE PUSH-UP RECRUIT
+
+Carlton played the penalty beat and rejected the original recruit
+outright — it was drawn from single canvas strokes (one fat line for a
+torso, one line for both legs, a dangling arm that never reached the
+ground, a circle for a head). Rebuilt as a **parametric rig**: the body
+is one rigid plank pivoting on the toes, so ankle, hip, shoulder and
+head stay on a single straight line at **every** phase and the legs can
+never bend, splay or warp; the arms are solved two-bone
+(shoulder → elbow → planted hand) so the elbows fold back naturally as
+the plank lowers. Every part is a filled, tapered, shaded mass —
+broad torso with a tucked shirt and belt, real arms and hands planted
+under the shoulders, straight trouser legs together, boots with toes
+on the ground, head in profile with a patrol cap. Pose and proportions
+follow Carlton's reference photo of soldiers in front-leaning rest
+(gray PT shirt, olive trousers, arms vertical at the top). Nine phase
+frames (680×400) are pre-rendered at boot; one tap plays one full
+push-up (down and back up in 0.42 s). Top / middle / bottom frames
+were rendered and inspected side by side: straight plank, straight
+legs, correct elbows at all three.
 
 ## Meta (Merit ⭐ persists between runs)
 
@@ -147,9 +190,11 @@ chrome shrinks labels but never hides one. Safe-area insets are padded.
 
 | File | Spec |
 |---|---|
-| `index.html` + `game.js` | The game (runtime ≈ 100 KB) |
+| `index.html` + `game.js` | The game (runtime ≈ 118 KB) |
 | `ds-flash.jpg` | 900×900, 176 KB — photoreal fail-flash face (tilted hat, no sunglasses) |
-| `ds-win.mp4` | 2.5 s, 1152×768, 631 KB — day-pass cadence video (silent; drums are WebAudio) |
+| `bark-01..12.mp3` | 1.0–2.5 s each, 9–21 KB — the recorded DS barks, indexed to the bark bank |
+| `cadence.mp3` | 8.7 s, 69 KB — the recorded cadence chain (DS calls + group squad + stomps) |
+| `ds-win.mp4` | 2.5 s, 1152×768, 631 KB — day-pass cadence video (silent; its audio is `cadence.mp3`) |
 | `ds-win.jpg` | 1152×768, 131 KB — cadence poster/fallback still |
 | `cover.png` | 1200×630 master (menu art) |
 | `cover-landscape.png` | 1920×1080 (exact) |
@@ -158,13 +203,17 @@ chrome shrinks labels but never hides one. Safe-area insets are padded.
 | `preview-landscape.mp4` | 15 s, 1920×1080 zoompan over the landscape cover |
 | `preview-portrait.mp4` | 15 s, 800×1200 zoompan over the portrait cover |
 
-Total pack ≈ 2.9 MB. Cover art is 100% PIL-drawn (DS face-to-face with the
+Total pack ≈ 3.15 MB. Cover art is 100% PIL-drawn (DS face-to-face with the
 recruit, "MOVE! MOVE! MOVE!" bubble); the title "BASIC TRAINING" was
 verified letter-by-letter visually after render, and re-verified after
 the hat-tilt re-render. The generated assets are the fail-flash face and
-the cadence still/clip (see above).
+the cadence still/clip (see above). Voice clips were produced with the
+studio TTS route (deep male voice, loudness-normalized); every clip is
+ffprobe-verified (bark durations 1.02–2.52 s; cadence exactly 8.70 s),
+and the working files live in `../basic-training-art-raw/audio/`
+(`build_audio.py` reproduces the whole pipeline).
 
-QA: `../basic-training-art-raw/smoke-test.js` — **102 headless checks**
+QA: `../basic-training-art-raw/smoke-test.js` — **129 headless checks**
 (boot, all 8 events' win AND fail paths, push-up penalty insertion,
 FAIL FLASH trigger + full 12-line bark rotation cycle + photo-asset
 presence/size/reference checks, day progression,
@@ -173,8 +222,19 @@ shortfall text, fake-SDK between-day ads with the 3-minute throttle,
 responsive fit at phone/desktop sizes, visualViewport pinning assertions,
 day-pass cadence behavior — pop opens on the MAMA call, squad answers on
 its own beat, chain verified intact in order, tap-to-skip stops it —
-plus cadence video asset presence/MP4-magic/size checks, total pack
-under 5 MB).
+plus cadence video asset presence/MP4-magic/size checks, and a World 7
+block: all 13 voice clips ship as real MP3s of sane size, bark
+durations/envelopes baked for all 12 lines, cadence slot durations sum
+to the recorded chain, VOX no-ops cleanly where no Audio exists, the
+dealt bark index provably matches the shown line, flash duration
+follows the dealt clip, the push-up rig renders 9 hi-res phase frames
+and the old stick-figure code is gone, total pack under 5 MB). Live
+browser verification (headless Chromium) additionally confirmed: all
+12 bark elements + the cadence clip load, a dealt bark plays with its
+playback position advancing while the jaw tracks the envelope, mute
+pauses a bark mid-flight, and the cadence plays on the day-complete
+pop. Screenshots of the push-up phases, the talking face at three jaw
+positions, and the win pop live in `../basic-training-art-raw/verify/`.
 `node --check` clean. One honest limit, same as every studio game: no
 real-device visual pass is possible from the build machine — Carlton's
 phone is the final visual check.

@@ -15,10 +15,12 @@
 
    Vanilla JS + Canvas, no build step, no dependencies. All art
    is drawn in code (pre-rendered to offscreen canvases at
-   boot); all sound is synthesized with WebAudio. FLAT FOLDER
-   by design: the CrazyGames uploader flattens subfolders, so
-   every file sits at the root and the game references bare
-   filenames only.
+   boot); SFX are synthesized with WebAudio, and the drill
+   sergeant's voice is REAL recorded audio (bark-01..12.mp3 for
+   the fail flash, cadence.mp3 for the day-pass chain — see VOX).
+   FLAT FOLDER by design: the CrazyGames uploader flattens
+   subfolders, so every file sits at the root and the game
+   references bare filenames only.
 
    CrazyGames SDK v3 is integrated through the CG wrapper
    below, following the studio's proven pattern: every call is
@@ -439,21 +441,147 @@ function buildSprites() {
   for (const v of ['shaky', 'icy', 'wheels']) {
     SPR.recruit[v] = makeSprite(170, 300, (g, w, h) => drawRecruit(g, w, h, { skin: '#c98d5e', variant: v }));
   }
-  // side-view push-up frames (body plank, arms to the ground)
-  const pushFrame = down => (g, w, h) => {
-    const hipY = down ? h * 0.52 : h * 0.40, headY = down ? h * 0.47 : h * 0.35;
-    g.strokeStyle = '#5d6b47'; g.lineWidth = h * 0.16; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(w * 0.22, hipY); g.lineTo(w * 0.80, headY + h * 0.03); g.stroke();   // torso plank
-    g.strokeStyle = '#4c5540'; g.lineWidth = h * 0.11;
-    g.beginPath(); g.moveTo(w * 0.22, hipY); g.lineTo(w * 0.06, h * 0.86); g.stroke();            // legs
-    g.strokeStyle = '#c98d5e'; g.lineWidth = h * 0.07;
-    g.beginPath(); g.moveTo(w * 0.76, headY + h * 0.06); g.lineTo(w * 0.82, h * 0.88); g.stroke(); // arm
-    g.fillStyle = '#24231f'; g.beginPath(); g.ellipse(w * 0.03, h * 0.88, w * 0.05, h * 0.035, 0, 0, 7); g.fill(); // boot
-    g.fillStyle = '#c98d5e'; g.beginPath(); g.arc(w * 0.86, headY, h * 0.085, 0, 7); g.fill();      // head
-    g.fillStyle = '#2e2a20'; g.beginPath(); g.ellipse(w * 0.86, headY - h * 0.045, h * 0.085, h * 0.04, 0, Math.PI, 0); g.fill();
-  };
-  SPR.pushUp = makeSprite(340, 200, pushFrame(false));
-  SPR.pushDn = makeSprite(340, 200, pushFrame(true));
+  // side-view push-up recruit — a SOLID MAN, rebuilt after Carlton
+  // rejected the old stroke-drawn 'stick figure' outright ('his legs
+  // are all fucked up... you gotta make a man'). Parametric rig: the
+  // body is ONE rigid plank pivoting on the toes — ankle, hip,
+  // shoulder and head stay on a single straight line at every phase,
+  // so the legs can never bend, splay or warp. The arms are solved
+  // two-bone (shoulder -> elbow -> planted hand) so the elbows fold
+  // back naturally as the plank lowers. Every part is a filled,
+  // tapered, shaded mass — no line limbs. Pose and proportions
+  // follow Carlton's reference: front leaning rest, arms vertical
+  // under the shoulders at the top, gray PT shirt, olive trousers,
+  // belt, patrol cap, black boots, feet together on the ground.
+  const PUSH_GY = 366;  // ground line inside the 680x400 sprite
+  function pushFigure(g, t) {
+    const skin = '#c98d5e', skinD = '#a96f3f';
+    const tee = '#7d8278', teeD = '#5b6056', teeL = '#9aa093';
+    const pants = '#4c5540', pantsD = '#39412f', pantsF = '#414a34', pantsFD = '#303826';
+    const boot = '#24231f', bootD = '#171713', cap = '#4a5138', capD = '#39412c';
+    const A = { x: 74, y: 338 };              // ankle — fixed; the body pivots on the toes
+    const phi = (25.5 - 9.5 * t) * Math.PI / 180;   // plank angle: lowers, never sags
+    const ux = Math.cos(phi), uy = -Math.sin(phi);
+    const at = d => ({ x: A.x + d * ux, y: A.y + d * uy });  // point along the plank
+    const hip = at(250), sho = at(478), knee = at(112), headC = at(532);
+    const nd = { x: -uy, y: ux };             // plank underside normal (toward ground)
+    const nu = { x: uy, y: -ux };             // plank top normal
+    const hand = { x: 505, y: PUSH_GY };      // planted under the top-position shoulder
+    // two-bone arm solve: elbow tracks BACK as the body lowers
+    const L1 = 118, L2 = 118;
+    const adx = hand.x - sho.x, ady = hand.y - sho.y;
+    const aLen = Math.hypot(adx, ady) || 1;
+    const aDist = Math.min(aLen, L1 + L2 - 0.5);
+    const aMid = aDist / 2, aH = Math.sqrt(Math.max(0, L1 * L1 - aMid * aMid));
+    const pvx = -ady / aLen, pvy = adx / aLen, psgn = pvx < 0 ? 1 : -1;
+    const elbow = { x: sho.x + adx / 2 + aH * pvx * psgn, y: sho.y + ady / 2 + aH * pvy * psgn };
+    const far = p => ({ x: p.x - 13, y: p.y + 5 });
+    // one solid tapered limb segment (filled mass, rounded joints)
+    const seg = (p1, p2, w1, w2, col) => {
+      const vx = p2.x - p1.x, vy = p2.y - p1.y, L = Math.hypot(vx, vy) || 1;
+      const nx = -vy / L, ny = vx / L;
+      g.fillStyle = col; g.beginPath();
+      g.moveTo(p1.x + nx * w1 / 2, p1.y + ny * w1 / 2);
+      g.lineTo(p2.x + nx * w2 / 2, p2.y + ny * w2 / 2);
+      g.quadraticCurveTo(p2.x + vx / L * w2 * 0.38, p2.y + vy / L * w2 * 0.38, p2.x - nx * w2 / 2, p2.y - ny * w2 / 2);
+      g.lineTo(p1.x - nx * w1 / 2, p1.y - ny * w1 / 2);
+      g.quadraticCurveTo(p1.x - vx / L * w1 * 0.38, p1.y - vy / L * w1 * 0.38, p1.x + nx * w1 / 2, p1.y + ny * w1 / 2);
+      g.fill();
+    };
+    const bootShape = (ank, col, sole) => {
+      g.fillStyle = col; g.beginPath();
+      g.moveTo(ank.x + 15, ank.y - 12);
+      g.quadraticCurveTo(ank.x - 2, ank.y + 8, ank.x - 24, ank.y + 19);
+      g.lineTo(ank.x - 30, ank.y + 27);                    // toe front
+      g.lineTo(ank.x - 32, PUSH_GY);
+      g.lineTo(ank.x + 24, PUSH_GY);                      // sole
+      g.lineTo(ank.x + 25, ank.y + 4);                    // heel back
+      g.quadraticCurveTo(ank.x + 24, ank.y - 10, ank.x + 15, ank.y - 12);
+      g.fill();
+      g.fillStyle = sole; g.fillRect(ank.x - 32, PUSH_GY - 4, 57, 4);
+    };
+    // ground shadow + contact patches
+    g.fillStyle = 'rgba(0,0,0,.16)';
+    g.beginPath(); g.ellipse((52 + headC.x) / 2, PUSH_GY + 7, 268, 10, 0, 0, 7); g.fill();
+    g.fillStyle = 'rgba(0,0,0,.22)';
+    g.beginPath(); g.ellipse(hand.x, PUSH_GY + 4, 30, 5, 0, 0, 7); g.fill();
+    g.beginPath(); g.ellipse(56, PUSH_GY + 4, 30, 5, 0, 0, 7); g.fill();
+    // far arm (behind the body, darker)
+    seg(far(sho), far(elbow), 30, 25, skinD);
+    seg(far(elbow), far(hand), 26, 21, skinD);
+    // far leg + boot
+    seg(far(hip), far(knee), 37, 29, pantsFD);
+    seg(far(knee), far(at(10)), 28, 21, pantsFD);
+    bootShape(far(A), bootD, '#0f0e0c');
+    // near leg (trousers): thigh + calf, dead straight along the plank
+    seg(hip, knee, 43, 33, pants);
+    seg(knee, at(10), 31, 23, pantsD);
+    // torso: one tapered mass, shoulder -> hip, shaded top to bottom
+    const cT = { x: sho.x + nu.x * 46, y: sho.y + nu.y * 46 }, cB = { x: sho.x + nd.x * 48, y: sho.y + nd.y * 48 };
+    const hT = { x: hip.x + nu.x * 36, y: hip.y + nu.y * 36 }, hB = { x: hip.x + nd.x * 40, y: hip.y + nd.y * 40 };
+    const grad = g.createLinearGradient(0, sho.y - 52, 0, hip.y + 58);
+    grad.addColorStop(0, teeL); grad.addColorStop(0.45, tee); grad.addColorStop(1, teeD);
+    g.fillStyle = grad; g.beginPath();
+    g.moveTo(cT.x, cT.y);
+    g.quadraticCurveTo((cT.x + hT.x) / 2, (cT.y + hT.y) / 2 - 4, hT.x, hT.y);
+    g.quadraticCurveTo(hip.x + ux * 14, hip.y + uy * 14, hB.x, hB.y);
+    g.lineTo(cB.x, cB.y);
+    g.quadraticCurveTo(sho.x - ux * 16, sho.y - uy * 16, cT.x, cT.y);
+    g.fill();
+    g.fillStyle = 'rgba(0,0,0,.13)';   // underside shade along the belly edge
+    g.beginPath();
+    g.moveTo(cB.x, cB.y); g.lineTo(hB.x, hB.y);
+    g.lineTo(hB.x - nd.x * 13, hB.y - nd.y * 13); g.lineTo(cB.x - nd.x * 13, cB.y - nd.y * 13);
+    g.closePath(); g.fill();
+    // belt at the waist (shirt tucked, per the reference)
+    const bIn = { x: hip.x + ux * 6, y: hip.y + uy * 6 }, bOut = { x: hip.x - ux * 9, y: hip.y - uy * 9 };
+    g.fillStyle = '#3a2e1e'; g.beginPath();
+    g.moveTo(bIn.x + nu.x * 38, bIn.y + nu.y * 38); g.lineTo(bOut.x + nu.x * 37, bOut.y + nu.y * 37);
+    g.lineTo(bOut.x + nd.x * 41, bOut.y + nd.y * 41); g.lineTo(bIn.x + nd.x * 41, bIn.y + nd.y * 41);
+    g.closePath(); g.fill();
+    g.fillStyle = '#8a743f'; g.fillRect(bIn.x - 5, bIn.y - 5, 10, 10);   // buckle
+    // near boot
+    bootShape(A, boot, bootD);
+    // near arm: sleeve to mid-upper-arm, then skin; deltoid cap on the shoulder
+    const slv = { x: sho.x + (elbow.x - sho.x) * 0.45, y: sho.y + (elbow.y - sho.y) * 0.45 };
+    g.fillStyle = tee; g.beginPath(); g.arc(sho.x, sho.y, 30, 0, 7); g.fill();
+    seg(sho, slv, 37, 32, tee);
+    seg(slv, elbow, 32, 27, skin);
+    seg(elbow, hand, 28, 22, skin);
+    g.fillStyle = skinD;   // planted hand, fingers forward
+    g.beginPath(); g.ellipse(hand.x + 3, PUSH_GY - 3, 17, 6.5, 0, 0, 7); g.fill();
+    g.strokeStyle = 'rgba(90,50,25,.55)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(hand.x + 8, PUSH_GY - 7); g.lineTo(hand.x + 8, PUSH_GY - 1); g.stroke();
+    // neck + head (profile, looking down the plank line, patrol cap)
+    seg(at(490), { x: headC.x - ux * 14, y: headC.y - uy * 14 }, 34, 30, skinD);
+    g.save();
+    g.translate(headC.x, headC.y); g.rotate(-phi + 0.10);
+    g.fillStyle = skin;
+    g.beginPath(); g.ellipse(2, -2, 33, 28, 0, 0, 7); g.fill();            // skull
+    g.beginPath(); g.ellipse(12, 7, 22, 19, 0, 0, 7); g.fill();            // jaw/cheek mass
+    g.fillStyle = 'rgba(0,0,0,.09)';
+    g.beginPath(); g.ellipse(13, 13, 17, 11, 0, 0, 7); g.fill();           // jaw shade
+    g.fillStyle = skinD;
+    g.beginPath(); g.moveTo(29, 1); g.lineTo(40, 9); g.lineTo(28, 12); g.closePath(); g.fill();  // nose
+    g.beginPath(); g.ellipse(-10, 0, 6, 8, 0, 0, 7); g.fill();             // ear
+    g.fillStyle = '#1c1e24'; g.fillRect(12, -6, 11, 4);                    // eye, cast down
+    g.strokeStyle = 'rgba(40,22,10,.85)'; g.lineWidth = 3; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(7, -11); g.lineTo(23, -8); g.stroke();         // brow
+    g.strokeStyle = 'rgba(90,50,30,.8)'; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(22, 16); g.lineTo(31, 14); g.stroke();         // gritted mouth
+    // patrol cap: dome + band + brim tipped down over the eyes
+    g.fillStyle = cap;
+    g.beginPath(); g.ellipse(0, -13, 34, 19, 0, Math.PI, 0); g.fill();
+    g.fillRect(-34, -15, 68, 8);
+    g.fillStyle = capD; g.fillRect(-34, -9, 68, 4);
+    g.beginPath(); g.moveTo(27, -11); g.lineTo(57, -4); g.lineTo(57, 1); g.lineTo(28, -4); g.closePath(); g.fill();
+    g.fillStyle = '#2e2a20'; g.fillRect(-35, -7, 7, 13);                   // buzz cut behind the cap
+    g.restore();
+  }
+  SPR.pushFrames = [];
+  for (let i = 0; i <= 8; i++) SPR.pushFrames.push(makeSprite(680, 400, (g) => pushFigure(g, i / 8)));
+  SPR.pushUp = SPR.pushFrames[0];
+  SPR.pushDn = SPR.pushFrames[SPR.pushFrames.length - 1];
   SPR.bus = makeSprite(620, 330, (g, w, h) => {
     // the bus: long, government-issue, full of regret
     g.fillStyle = '#8b8f7d'; g.beginPath(); g.roundRect(6, 26, w - 12, h - 96, 26); g.fill();
@@ -657,7 +785,13 @@ function updateMenuStats() {
   if (save.pushupsDone > 0) bits.push('💪 Lifetime push-ups: ' + save.pushupsDone);
   el('menuStats').textContent = bits.length ? bits.join(' · ') : 'No service record yet. The bus is waiting.';
 }
-function updateMute() { el('muteBtn').textContent = effectiveMuted() ? '🔇' : '🔊'; }
+function updateMute() {
+  el('muteBtn').textContent = effectiveMuted() ? '🔇' : '🔊';
+  if (typeof VOX !== 'undefined') {   // recorded voices obey the same mute
+    VOX.applyMute();
+    if (!effectiveMuted() && winPop.active) VOX.playCadence();
+  }
+}
 
 /* ---------------- tutorial ---------------- */
 function tutActiveFor(type) {
@@ -873,37 +1007,155 @@ function sayTransient(text, dur) {
 }
 function dsSprite(shout) { return SPR.ds[save.dsPack + (shout ? 'Shout' : 'Calm')]; }
 
+/* ---------------- RECORDED VOICES (VOX) ----------------
+   Carlton: the DS must actually TALK. The bark lines and the whole
+   cadence chain are real recorded voice clips (TTS, deep male DS
+   voice) shipped flat in the game folder — bark-01..12.mp3 keyed
+   to FAIL_FLASH_BARKS by index, cadence.mp3 for the day-pass.
+   BARK_DUR / BARK_ENV are measured from the shipped clips
+   (duration in seconds; loudness envelope at 20 fps) and drive
+   the flash timing and the talking-jaw animation. Every play
+   routes through effectiveMuted() — the in-game toggle AND the
+   portal's muteAudio both silence the voices. Where no Audio
+   exists (headless tests), VOX quietly no-ops and the old synth
+   SFX remain as the fallback. */
+const BARK_DUR = [1.831, 1.021, 1.181, 2.422, 1.375, 2.168, 1.727, 1.664, 2.028, 2.297, 1.994, 2.522];
+const BARK_ENV = [[0.05,0.25,0.53,0.69,0.60,0.30,0.14,0.21,0.24,0.16,0.23,0.39,0.43,0.46,0.39,0.17,0.14,0.33,0.54,0.50,0.35,0.54,0.72,0.47,0.19,0.12,0.17,0.30,0.37,0.34,0.36,0.39,0.27,0.09,0.03,0.02,0.01],[0.06,0.19,0.46,0.73,0.61,0.47,0.51,0.26,0.06,0.17,0.32,0.31,0.17,0.11,0.24,0.42,0.51,0.42,0.17,0.02,0.01],[0.11,0.36,0.43,0.29,0.44,0.74,0.85,0.89,0.94,0.83,0.49,0.33,0.33,0.17,0.13,0.36,0.52,0.43,0.44,0.69,0.75,0.48,0.20,0.05],[0.15,0.53,0.73,0.46,0.29,0.53,0.67,0.47,0.25,0.36,0.59,0.71,0.61,0.30,0.22,0.49,0.74,0.65,0.48,0.53,0.63,0.57,0.41,0.38,0.33,0.30,0.45,0.45,0.25,0.15,0.26,0.42,0.51,0.49,0.40,0.31,0.16,0.07,0.17,0.36,0.53,0.57,0.39,0.15,0.06,0.08,0.09,0.06,0.02],[0.16,0.55,0.88,0.88,0.55,0.31,0.32,0.25,0.09,0.02,0.01,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.11,0.31,0.34,0.20,0.08,0.05,0.06,0.04,0.02,0.01],[0.13,0.31,0.28,0.14,0.08,0.30,0.72,0.91,0.87,0.86,0.83,0.62,0.32,0.11,0.01,0.00,0.00,0.00,0.00,0.00,0.00,0.12,0.33,0.32,0.15,0.08,0.08,0.25,0.55,0.70,0.83,0.94,0.94,0.95,0.84,0.64,0.53,0.38,0.19,0.13,0.09,0.06,0.04,0.02],[0.06,0.27,0.55,0.71,0.68,0.53,0.44,0.34,0.22,0.28,0.55,0.84,0.98,0.82,0.59,0.52,0.39,0.28,0.33,0.26,0.19,0.35,0.58,0.62,0.45,0.21,0.07,0.12,0.29,0.44,0.48,0.47,0.43,0.22,0.04],[0.08,0.27,0.51,0.65,0.65,0.56,0.34,0.39,0.79,0.81,0.38,0.17,0.33,0.45,0.33,0.14,0.06,0.03,0.13,0.32,0.37,0.31,0.21,0.18,0.37,0.53,0.54,0.60,0.62,0.47,0.25,0.09,0.03,0.01],[0.21,0.52,0.55,0.59,0.75,0.66,0.41,0.21,0.13,0.29,0.52,0.50,0.38,0.34,0.30,0.18,0.05,0.00,0.00,0.00,0.00,0.07,0.32,0.64,0.77,0.62,0.51,0.56,0.67,0.82,0.79,0.43,0.14,0.17,0.32,0.30,0.16,0.07,0.05,0.03,0.02],[0.14,0.49,0.62,0.37,0.23,0.24,0.19,0.15,0.23,0.47,0.78,0.92,0.89,0.73,0.60,0.71,0.67,0.39,0.18,0.07,0.04,0.20,0.42,0.35,0.17,0.08,0.04,0.02,0.01,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.00,0.01,0.07,0.24,0.54,0.73,0.52,0.17,0.04,0.03],[0.09,0.19,0.22,0.37,0.65,0.82,0.72,0.59,0.50,0.30,0.12,0.13,0.37,0.68,0.84,0.83,0.62,0.32,0.35,0.54,0.49,0.36,0.34,0.45,0.46,0.30,0.15,0.15,0.33,0.47,0.45,0.28,0.15,0.15,0.10,0.05,0.03,0.03,0.03,0.01],[0.20,0.56,0.60,0.37,0.47,0.76,0.83,0.85,0.93,0.84,0.57,0.36,0.29,0.26,0.16,0.06,0.12,0.21,0.14,0.06,0.05,0.05,0.04,0.03,0.01,0.00,0.00,0.00,0.00,0.00,0.03,0.15,0.34,0.48,0.57,0.51,0.37,0.42,0.56,0.76,0.75,0.41,0.15,0.06,0.06,0.12,0.12,0.08,0.05,0.04,0.02]];
+const VOX = {
+  barks: [], cadence: null, cadenceReady: false,
+  init() {
+    try {
+      if (typeof Audio === 'undefined') return;
+      for (let i = 0; i < FAIL_FLASH_BARKS.length; i++) {
+        const a = new Audio();
+        a.preload = 'auto'; a.volume = 0.95;
+        a.src = 'bark-' + String(i + 1).padStart(2, '0') + '.mp3';
+        this.barks.push(a);
+      }
+      const c = new Audio();
+      c.preload = 'auto'; c.volume = 0.95; c.src = 'cadence.mp3';
+      c.addEventListener('canplaythrough', () => { this.cadenceReady = true; });
+      this.cadence = c;
+    } catch (e) { this.barks = []; this.cadence = null; }
+  },
+  // returns true when the recorded-voice path owns this bark
+  // (played, or deliberately silent because the game is muted)
+  playBark(idx) {
+    const a = this.barks[idx];
+    if (!a) return false;
+    if (effectiveMuted()) return true;
+    try { a.pause(); a.currentTime = 0; const p = a.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    return true;
+  },
+  barkPos(idx) {
+    const a = this.barks[idx];
+    if (a && !a.paused && !a.ended) return a.currentTime;
+    return -1;
+  },
+  playCadence() {
+    if (!this.cadence) return false;
+    if (effectiveMuted()) return true;
+    try { this.cadence.currentTime = 0; const p = this.cadence.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    return true;
+  },
+  stopCadence() { if (this.cadence) { try { this.cadence.pause(); } catch (e) {} } },
+  stopBark() { for (const a of this.barks) { try { a.pause(); } catch (e) {} } },
+  cadenceAudible() { return !!this.cadence && !effectiveMuted(); },
+  applyMute() {
+    if (!effectiveMuted()) return;
+    this.stopBark(); this.stopCadence();
+  }
+};
+VOX.init();
+
 /* ---------------- THE FAIL FLASH ----------------
-   On every blown order: a huge DS face fills the screen for
-   ~0.85s with a screen shake, a bark SFX, and one line from the
-   rotating bank — then the push-up beat proceeds as normal.
-   Purely visual; input and timers are untouched.
+   On every blown order: a huge DS face fills the screen with a
+   screen shake and one line from the rotating bark bank — SPOKEN
+   by the recorded DS voice while the photo's jaw works with the
+   syllables (see drawFlashFace) — then the push-up beat proceeds
+   as normal. Purely visual; input and timers are untouched.
    Carlton's sharpened spec: the face is a PHOTOREALISTIC portrait
    of a fictional drill sergeant (generated for this game, original
    character — no real person). The cartoon game cuts to a real
    face in yours; that contrast is the scare. If the photo can't
    load (offline/blocked/headless) the big cartoon DS sprite is
-   the fallback. */
+   the fallback. The face animation is the photo itself, animated
+   programmatically on canvas — the video-generator route for this
+   face was refused by the media pipeline and is NOT retried. */
 let flashImg = null, flashImgReady = false;
 try {
   flashImg = new Image();
   flashImg.onload = () => { flashImgReady = true; };
   flashImg.src = 'ds-flash.jpg';
 } catch (e) { flashImg = null; }
-const flash = { active: false, t: 0, dur: 0.85, text: '' };
+const flash = { active: false, t: 0, dur: 0.85, text: '', barkIdx: -1, jaw: 0, jawOverride: null };
 function nextBarkLine() {
   if (!Array.isArray(save.barkBag) || !save.barkBag.length) {
     save.barkBag = shuffle(FAIL_FLASH_BARKS.map((_, i) => i));
   }
   const idx = save.barkBag.pop();
   persist();
+  flash.barkIdx = idx;   // audio clip + envelope ride the same index as the text
   return FAIL_FLASH_BARKS[idx];
 }
 function triggerFailFlash() {
   flash.text = nextBarkLine();
+  // the face stays up for as long as the bark takes to say
+  flash.dur = Math.max(0.95, Math.min(2.9, (BARK_DUR[flash.barkIdx] || 0.85) + 0.15));
   flash.t = flash.dur;
   flash.active = true;
-  SFX.bark(3);
+  if (!VOX.playBark(flash.barkIdx)) SFX.bark(3);   // synth only where no Audio exists
+}
+/* How open the DS jaw is right now, 0..1 — driven by the bark
+   clip's measured loudness envelope at the playback position
+   (or the flash clock when the voice is muted/absent), so the
+   mouth works WITH the syllables. jawOverride is a test hook. */
+function flashJawAmount() {
+  if (flash.jawOverride != null) return flash.jawOverride;
+  const env = BARK_ENV[flash.barkIdx];
+  if (!env || !env.length) return 0;
+  let pos = VOX.barkPos(flash.barkIdx);
+  if (pos < 0) pos = flash.dur - flash.t;
+  const f = Math.max(0, Math.min(env.length - 1, Math.floor(pos * 20)));
+  const cur = env[f], nxt = env[Math.min(env.length - 1, f + 1)];
+  return Math.max(0, Math.min(1, (cur + nxt) / 2));
+}
+/* The talking face: the photograph itself, animated on canvas.
+   The lower face is re-drawn in horizontal strips with a
+   progressive vertical stretch anchored at the mouth line:
+   pixels AT the seam don't move at all, and displacement grows
+   toward the chin — so there is no tear or duplicated band, the
+   skin and the dark mouth interior simply pull open like a real
+   jaw working. Loud syllables stretch it wide; quiet ones let
+   it settle back to the untouched photograph (jaw = 0). */
+const JAW_GEO = { cx: 0.465, topY: 0.585, botY: 0.875, halfW: 0.225 };
+function drawFlashFace(g, dx, dy, s, jaw) {
+  g.drawImage(flashImg, dx, dy, s, s);
+  if (jaw <= 0.02) return;
+  const iw = (flashImg && flashImg.naturalWidth) || 900;
+  const cxp = dx + JAW_GEO.cx * s, hw = JAW_GEO.halfW * s;
+  const topS = JAW_GEO.topY, botS = 0.92, k = jaw * 0.15;
+  const chinDest = topS + (JAW_GEO.botY - topS) * (1 + k);
+  const topY = dy + topS * s, botY = dy + (chinDest + 0.015) * s;
+  g.save();
+  g.beginPath();
+  g.moveTo(cxp - hw, topY);
+  g.quadraticCurveTo(cxp - hw, botY, cxp, botY);
+  g.quadraticCurveTo(cxp + hw, botY, cxp + hw, topY);
+  g.quadraticCurveTo(cxp, topY - 0.03 * s, cxp - hw, topY);
+  g.closePath(); g.clip();
+  const STRIPS = 26;
+  for (let i = 0; i < STRIPS; i++) {
+    const f0 = i / STRIPS, f1 = (i + 1) / STRIPS;
+    const sy0 = (topS + (botS - topS) * f0) * iw, sy1 = (topS + (botS - topS) * f1) * iw;
+    const dy0 = dy + (topS + (botS - topS) * f0 * (1 + k)) * s;
+    const dy1 = dy + (topS + (botS - topS) * f1 * (1 + k)) * s;
+    g.drawImage(flashImg, 0, sy0, iw, sy1 - sy0, dx, dy0, s, (dy1 - dy0) + 1);
+  }
+  g.restore();
+  // soft shadow pooling under the stretched jaw sells the hinge
+  g.fillStyle = 'rgba(20,6,2,' + (0.18 * jaw).toFixed(3) + ')';
+  g.beginPath(); g.ellipse(cxp, dy + chinDest * s, hw * 0.8, 0.02 * s, 0, 0, 7); g.fill();
 }
 function drawFailFlash(g) {
   if (!flash.active) return;
@@ -911,10 +1163,18 @@ function drawFailFlash(g) {
   g.fillStyle = 'rgba(52,8,4,' + (0.45 + 0.25 * remain) + ')';
   g.fillRect(0, 0, W, H);
   if (flashImgReady && flashImg) {
-    // the real face: scale-punch as it lands, then it just LOOMS
-    const punch = 1 + 0.30 * remain * remain;
+    // the real face: scale-punch as it lands, then it LOOMS —
+    // lunging and shaking with the bark while the jaw works
+    const jaw = flashJawAmount();
+    flash.jaw = jaw;
+    const punch = 1 + 0.30 * remain * remain + 0.045 * jaw;
     const s = 620 * punch;
-    g.drawImage(flashImg, W / 2 - s / 2, 238 - s / 2, s, s);
+    const cxp = W / 2 + (Math.sin(timeNow * 57) * 2.4 + Math.sin(timeNow * 31) * 1.4) * jaw;
+    const cyp = 238 + Math.cos(timeNow * 47) * 2.0 * jaw;
+    g.save();
+    g.translate(cxp, cyp); g.rotate(Math.sin(timeNow * 41) * 0.008 * jaw); g.translate(-cxp, -cyp);
+    drawFlashFace(g, cxp - s / 2, cyp - s / 2, s, jaw);
+    g.restore();
   } else {
     const big = SPR.dsBig[save.dsPack];
     const pulse = 1 + 0.05 * Math.sin(timeNow * 30) * remain;
@@ -954,6 +1214,12 @@ const CADENCE_CHAIN = [
   { who: 'DS', text: 'YOUR MAMA, YOUR DADDY, THE DOG, THE CAT, THE RAT WERE ALL HOME WHEN YOU LEFT!' },
   { who: 'SQUAD', text: "YOU'RE RIGHT! YOU'RE RIGHT!" }
 ];
+/* Per-line slot durations of the recorded cadence mix
+   (cadence.mp3): each voice segment was assembled into exactly
+   its slot, so when the clip plays, the ribbon steps in sync
+   with the voices — DS call, squad answer, in Carlton's order,
+   marching stomps mixed underneath. Total = one full chain. */
+const CADENCE_STEP_DUR = [1.15, 0.90, 1.15, 0.90, 3.10, 1.50];
 const winPop = { active: false, step: 0, t: 0, beat: 0 };
 function cadenceStomp(big) {
   tone(95, 0.13, 'sine', big ? 0.24 : 0.15, 44);
@@ -965,13 +1231,14 @@ function advanceCadence() {
   const who = el('cadenceWho'), txt = el('cadenceText');
   if (who) { who.textContent = line.who === 'DS' ? '🗣️ DS' : '📣 SQUAD'; who.className = line.who === 'DS' ? 'whoDs' : 'whoSquad'; }
   if (txt) txt.textContent = line.text;
-  if (line.who === 'DS') SFX.bark(2);
+  if (line.who === 'DS' && !VOX.cadenceAudible()) SFX.bark(2);   // synth only when the recorded chain isn't sounding
 }
 function showWinPop() {
   const pop = el('winPop'), v = el('winVid');
   if (pop) pop.classList.remove('hidden');
   winPop.active = true; winPop.step = -1; winPop.t = 0; winPop.beat = 0;
   advanceCadence();
+  VOX.playCadence();   // the recorded chain: DS calls, squad answers, stomps under
   if (v) {
     try { v.currentTime = 0; } catch (e) {}
     if (typeof v.play === 'function') { try { const p = v.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {} }
@@ -980,6 +1247,7 @@ function showWinPop() {
 function stopWinPop() {
   if (!winPop.active) return;
   winPop.active = false;
+  VOX.stopCadence();
   const pop = el('winPop'), v = el('winVid');
   if (pop) pop.classList.add('hidden');
   if (v && typeof v.pause === 'function') { try { v.pause(); } catch (e) {} }
@@ -988,10 +1256,16 @@ function updateWinPop(dt) {
   if (!winPop.active) return;
   if (state !== 'dayend') { stopWinPop(); return; }
   winPop.t += dt;
-  const stepDur = CADENCE_CHAIN[winPop.step].text.length > 40 ? 1.5 : 0.95;
-  if (winPop.t >= stepDur) { winPop.t = 0; advanceCadence(); }
+  // ribbon steps on the recorded mix's slot boundaries when the
+  // voice path exists; the text-length heuristic is the fallback
+  const stepDur = VOX.cadence ? (CADENCE_STEP_DUR[winPop.step] || 0.95)
+    : (CADENCE_CHAIN[winPop.step].text.length > 40 ? 1.5 : 0.95);
+  if (winPop.t >= stepDur) {
+    winPop.t = 0; advanceCadence();
+    if (winPop.step === 0) VOX.playCadence();   // chain wrapped — voices start the next pass
+  }
   winPop.beat += dt;
-  if (winPop.beat >= 0.48) { winPop.beat = 0; cadenceStomp(winPop.step % 2 === 0); }
+  if (winPop.beat >= 0.48) { winPop.beat = 0; if (!VOX.cadenceAudible()) cadenceStomp(winPop.step % 2 === 0); }
 }
 
 /* ---------------- OFF THE BUS ---------------- */
@@ -1520,9 +1794,16 @@ EV_DRAW.pushups = (g, e) => {
   const d = e.data;
   g.drawImage(dsSprite(true), 56, 120, 230, 261);
   drawSpeechBubble(g, 300, 66, 430, e.sayText, { tailX: 330 });
-  const frame = d.count % 2 ? SPR.pushDn : SPR.pushUp;
-  const bob = Math.sin(timeNow * 3) * 3;
-  g.drawImage(frame, 330, 300 + bob, 340, 200);
+  // one tap = one full push-up: the plank dips and drives back up
+  // through the pre-rendered phase frames (rigid body, bending elbows)
+  let ft = 0;
+  if (d.animT0 != null) {
+    const p = (timeNow - d.animT0) / 0.42;
+    if (p >= 1) d.animT0 = null;
+    else ft = Math.sin(Math.PI * Math.max(0, p));
+  }
+  const fi = Math.round(ft * (SPR.pushFrames.length - 1));
+  g.drawImage(SPR.pushFrames[fi], 330, 300, 340, 200);
   g.fillStyle = '#fff3d6'; g.font = 'bold 44px "Arial Black", "Trebuchet MS"'; g.textAlign = 'center';
   g.fillText(d.count + ' / ' + d.need, 760, 240);
   g.font = 'bold 19px "Trebuchet MS"'; g.fillStyle = '#ffd76a';
@@ -1536,6 +1817,7 @@ EV_DRAW.pushups = (g, e) => {
 EV_DOWN.pushups = e => {
   const d = e.data;
   d.count++;
+  d.animT0 = timeNow;
   save.pushupsDone++;
   persist();
   SFX.grunt();
@@ -1740,8 +2022,12 @@ window.__bt = {
   tutDone() { return save.tutDone; },
   tutActiveFor,
   FAIL_FLASH_BARKS,
-  flashState() { return { active: flash.active, t: flash.t, text: flash.text, bankRemaining: Array.isArray(save.barkBag) ? save.barkBag.length : 0 }; },
+  flashState() { return { active: flash.active, t: flash.t, text: flash.text, barkIdx: flash.barkIdx, jaw: flash.jaw || 0, bankRemaining: Array.isArray(save.barkBag) ? save.barkBag.length : 0 }; },
+  get flash() { return flash; },
   triggerFailFlash,
+  VOX, BARK_DUR, BARK_ENV, CADENCE_STEP_DUR,
+  pushInfo() { return { frames: SPR.pushFrames.length, w: SPR.pushFrames[0].width, h: SPR.pushFrames[0].height, upSame: SPR.pushUp === SPR.pushFrames[0], dnSame: SPR.pushDn === SPR.pushFrames[SPR.pushFrames.length - 1] }; },
+  pushFrameData(i) { const c = SPR.pushFrames[Math.max(0, Math.min(SPR.pushFrames.length - 1, i))]; return c && c.toDataURL ? c.toDataURL('image/png') : null; },
   CADENCE_CHAIN, showWinPop, stopWinPop,
   winState() { const l = CADENCE_CHAIN[winPop.step]; return { active: winPop.active, step: winPop.step, who: l ? l.who : null, text: l ? l.text : '' }; }
 };
