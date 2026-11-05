@@ -136,6 +136,23 @@ const FAIL_BARKS = [
   'UN-BELIEVABLE!', "THAT'S IT — DOWN!", 'WHAT WAS THAT?!'
 ];
 const WIN_QUIPS = ['SQUARED AWAY.', '…Acceptable.', "DON'T GET COCKY, PRIVATE.", 'HOOAH.', '…Fine. NEXT!'];
+/* THE FAIL FLASH bark bank (Carlton's design addition): every blown
+   order flashes a huge DS face full-screen with one of these lines.
+   Rotation is a shuffled bag — no line repeats until all 12 cycle. */
+const FAIL_FLASH_BARKS = [
+  'DROP AND GIVE ME 25, NUMBNUTS!',
+  'MOVE IT, ASSWIPE!',
+  'YOU CALL THAT ATTENTION?!',
+  "I'VE SEEN BETTER COORDINATION FROM A BAG OF HAMMERS!",
+  'DO IT AGAIN. FASTER.',
+  'OUTSTANDING. OUTSTANDINGLY BAD.',
+  'WHAT IN THE WORLD ARE YOU DOING, PRIVATE?!',
+  'MY BOOT MOVES FASTER THAN YOU!',
+  'WAS THAT A TRY? THAT WAS NOT A TRY!',
+  'YOU HAD ONE JOB, PRIVATE. ONE.',
+  "IF YOU WERE ANY SLOWER, YOU'D BE GOING BACKWARDS!",
+  "MY GRANDMOTHER JUST TEXTED. SHE'S EMBARRASSED FOR YOU."
+];
 const SHARK_ORDERS = ['GET DOWN!', 'STAY UP!', 'EYES FRONT!', 'LOOK AT ME!'];
 const NUM_WORDS = ['ZERO', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE', 'TEN'];
 
@@ -150,7 +167,7 @@ function defaultSave() {
     theme: 'reception', themesOwned: ['reception'],
     bestScore: 0, bestDay: 0, graduations: 0, daysServed: 0, runs: 0,
     pushupsDone: 0, ordersObeyed: 0, muted: false,
-    tutSeen: {}, tutDone: false
+    tutSeen: {}, tutDone: false, barkBag: []
   };
 }
 let save = defaultSave();
@@ -161,6 +178,7 @@ try {
     if (d && typeof d === 'object') {
       save = Object.assign(defaultSave(), d);
       save.tutSeen = Object.assign({}, d.tutSeen || {});
+      save.barkBag = Array.isArray(d.barkBag) ? d.barkBag.filter(i => Number.isInteger(i) && i >= 0 && i < FAIL_FLASH_BARKS.length) : [];
     }
   }
 } catch (e) { save = defaultSave(); }
@@ -398,9 +416,13 @@ function buildSprites() {
     whisper:  { skin: '#dcb08a', band: '#20242c', shirt: '#39404d', clearGlasses: true }
   };
   SPR.ds = {};
+  SPR.dsBig = {};
   for (const k of Object.keys(packs)) {
     SPR.ds[k + 'Calm'] = makeSprite(300, 340, (g, w, h) => drawDSHead(g, w, h, Object.assign({}, packs[k], { shout: false })));
     SPR.ds[k + 'Shout'] = makeSprite(300, 340, (g, w, h) => drawDSHead(g, w, h, Object.assign({}, packs[k], { shout: true })));
+    // the FAIL FLASH close-up: same vector art rendered at 2x so the
+    // full-screen face stays crisp
+    SPR.dsBig[k] = makeSprite(600, 680, (g, w, h) => drawDSHead(g, w, h, Object.assign({}, packs[k], { shout: true })));
   }
   SPR.recruit = {};
   for (const v of ['shaky', 'icy', 'wheels']) {
@@ -710,6 +732,7 @@ function finishEvent(success) {
   } else {
     streak = 0; meter -= 22; dayStats.failed++;
     SFX.buzzer();
+    triggerFailFlash();
   }
   persist(); updateHUD();
   if (success) nextEvent();
@@ -837,6 +860,48 @@ function sayTransient(text, dur) {
   SFX.bark(2);
 }
 function dsSprite(shout) { return SPR.ds[save.dsPack + (shout ? 'Shout' : 'Calm')]; }
+
+/* ---------------- THE FAIL FLASH ----------------
+   On every blown order: a huge DS face fills the screen for
+   ~0.85s with a screen shake, a bark SFX, and one line from the
+   rotating bank — then the push-up beat proceeds as normal.
+   Purely visual; input and timers are untouched. */
+const flash = { active: false, t: 0, dur: 0.85, text: '' };
+function nextBarkLine() {
+  if (!Array.isArray(save.barkBag) || !save.barkBag.length) {
+    save.barkBag = shuffle(FAIL_FLASH_BARKS.map((_, i) => i));
+  }
+  const idx = save.barkBag.pop();
+  persist();
+  return FAIL_FLASH_BARKS[idx];
+}
+function triggerFailFlash() {
+  flash.text = nextBarkLine();
+  flash.t = flash.dur;
+  flash.active = true;
+  SFX.bark(3);
+}
+function drawFailFlash(g) {
+  if (!flash.active) return;
+  const remain = Math.max(0, flash.t / flash.dur);
+  g.fillStyle = 'rgba(52,8,4,' + (0.45 + 0.25 * remain) + ')';
+  g.fillRect(0, 0, W, H);
+  const big = SPR.dsBig[save.dsPack];
+  const pulse = 1 + 0.05 * Math.sin(timeNow * 30) * remain;
+  const fw = 400 * pulse, fh = 453 * pulse;
+  g.drawImage(big, W / 2 - fw / 2, 208 - fh / 2, fw, fh);
+  // the bark, on a stencil ribbon across the bottom
+  g.fillStyle = 'rgba(14,14,8,.92)';
+  g.beginPath(); g.roundRect(60, H - 118, W - 120, 76, 12); g.fill();
+  g.strokeStyle = '#ffd94d'; g.lineWidth = 3;
+  g.beginPath(); g.roundRect(60, H - 118, W - 120, 76, 12); g.stroke();
+  g.fillStyle = '#ffe9a8';
+  g.font = 'bold 30px "Arial Black", "Trebuchet MS", sans-serif';
+  g.textAlign = 'center';
+  const lines = wrapLines(g, flash.text, W - 190);
+  lines.forEach((ln, i) => g.fillText(ln, W / 2, H - 118 + (lines.length > 1 ? 32 : 50) + i * 34));
+  g.textAlign = 'left';
+}
 
 /* ---------------- OFF THE BUS ---------------- */
 const BUS_DOOR = { x: 922, y: 240, w: 62, h: 180 };
@@ -1434,6 +1499,7 @@ function drawScene(g) {
   }
   if (EV_DRAW[e.type]) EV_DRAW[e.type](g, e);
   if (e.phase === 'play') drawTimerBar(g, Math.max(0, e.timeLeft) / e.timeTotal, EVENT_DEFS[e.type].title);
+  drawFailFlash(g);
 }
 
 /* ---------------- per-frame update ---------------- */
@@ -1464,7 +1530,15 @@ function frame(ts) {
     bannerT -= dt;
     if (bannerT <= 0) { hideBanner(); beginEvent(plan[0]); CG.gameplayStart(); }
   } else if (state === 'event') updateEvent(dt);
-  drawScene(ctx);
+  if (flash.active) {
+    flash.t -= dt;
+    if (flash.t <= 0) flash.active = false;
+    const mag = 11 * Math.max(0, flash.t / flash.dur);
+    ctx.save();
+    ctx.translate((Math.random() * 2 - 1) * mag, (Math.random() * 2 - 1) * mag);
+    drawScene(ctx);
+    ctx.restore();
+  } else drawScene(ctx);
 }
 
 /* ---------------- solve/fail helpers (debug + tests) ---------------- */
@@ -1571,5 +1645,8 @@ window.__bt = {
   setMeter(n) { meter = n; updateHUD(); },
   skipTutorial, reseed, pinWrap, fitStage, vvBox,
   tutDone() { return save.tutDone; },
-  tutActiveFor
+  tutActiveFor,
+  FAIL_FLASH_BARKS,
+  flashState() { return { active: flash.active, t: flash.t, text: flash.text, bankRemaining: Array.isArray(save.barkBag) ? save.barkBag.length : 0 }; },
+  triggerFailFlash
 };
