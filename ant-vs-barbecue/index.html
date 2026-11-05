@@ -14,11 +14,22 @@
   html, body {
     background:#2e4a26; color:#2b1c10;
     font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
-    height:100%; overflow:hidden;
+    height:100%; height:100dvh; overflow:hidden; overscroll-behavior:none;
     -webkit-user-select:none; user-select:none;
     -webkit-tap-highlight-color: transparent;
   }
-  #wrap { height:100%; height:100vh; height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:8px; }
+  /* The game is the ENTIRE page. #wrap is position:fixed and game.js
+     (pinWrap) drives its size + offset from window.visualViewport, so
+     the column always sits exactly inside the visible area — Edge's
+     tab strip / address bar can never cover the top of the game, and
+     the page itself can never scroll. CSS size here is a pre-JS
+     fallback only. Padding respects the device safe areas. */
+  #wrap {
+    position:fixed; left:0; top:0; width:100%; height:100dvh;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    padding:calc(8px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));
+    touch-action:none;
+  }
   #hud {
     width:var(--uW, min(97vw, 1000px)); display:flex; align-items:center; gap:8px; flex-wrap:wrap;
     font-size:clamp(12px, 2.4vw, 17px); font-weight:bold;
@@ -67,9 +78,16 @@
     border:3px solid #8a5f27; border-radius:12px; touch-action:none;
   }
   .overlay {
-    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
     text-align:center; background:rgba(30,20,8,.88); color:#fdf6e3; border-radius:12px; padding:16px; gap:10px; overflow-y:auto;
   }
+  /* Safe centering for overlays: the auto margins center content when
+     it fits and collapse to 0 when it overflows, so the TOP of tall
+     content (menu cover + title on landscape phones) stays reachable
+     by scrolling inside the overlay. Plain justify-content:center
+     pushes overflowing tops above the scroll origin — unreachable. */
+  .overlay > :first-child { margin-top:auto; }
+  .overlay > :last-child { margin-bottom:auto; }
   .overlay h1 {
     font-size:clamp(34px, 7.6vw, 58px); letter-spacing:2px; color:#ffe9a8;
     text-shadow:0 0 22px rgba(255,140,40,.6), 0 3px 0 #7a2c10, 0 8px 24px rgba(0,0,0,.8);
@@ -147,10 +165,11 @@
     display:flex; align-items:center; justify-content:center; color:#ffe9a8;
     font-size:clamp(16px, 3.4vw, 22px); font-weight:bold;
   }
-  /* ---- responsive fit (phones): the whole column is height-fitted by
-     fitStage() in game.js via --uW; below is the compact chrome layout
-     that keeps HUD + defender bar short enough for small screens ---- */
-  body { overscroll-behavior:none; }
+  /* ---- responsive fit (phones): #wrap is pinned to the visible
+     viewport by pinWrap() in game.js (visualViewport size + offset)
+     and the column is height-fitted via --uW; below is the compact
+     chrome layout that keeps HUD + defender bar short enough for
+     small screens ---- */
   button { touch-action:manipulation; }
   #rotateHint {
     background:rgba(30,20,8,.92); border:2px solid #ffd76a; color:#ffe9a8; font-weight:bold;
@@ -165,14 +184,24 @@
       flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden;
       justify-content:flex-start; padding-bottom:4px; scrollbar-width:thin;
     }
-    .card { flex:0 0 auto; width:108px; min-height:58px; padding:6px 8px; }
+    /* Compact card: one short row block — icon + NAME on the first
+       line, price (+ cooldown) on the second. The name is NEVER
+       hidden or clipped: players must see what they're picking.
+       Only the flavor description drops out at this size. */
+    .card {
+      flex:0 0 auto; width:138px; min-height:46px; padding:5px 8px;
+      flex-direction:row; flex-wrap:wrap; align-items:center; column-gap:6px; row-gap:0;
+    }
+    .card .cicon { font-size:18px; line-height:1; }
     .card .cdesc { display:none; }
-    .card .cname { font-size:12px; }
-    .card .ccd { min-height:0; }
+    .card .cname { font-size:12px; flex:1 1 64px; }
+    .card .ccost { font-size:12px; }
+    .card .ccd { min-height:0; font-size:10px; }
     #waveBar { font-size:12px; gap:6px; }
     #nextWaveBtn { min-height:40px; padding:6px 14px; }
     .overlay { padding:10px; gap:8px; }
-    .overlay .coverart { width:min(76%, 400px); }
+    .overlay .coverart { width:min(62%, 340px); }
+    .overlay h1 { font-size:clamp(26px, 5.2vw, 40px); }
     button.cta { padding:10px 26px; }
     button.ghost { padding:8px 20px; }
   }

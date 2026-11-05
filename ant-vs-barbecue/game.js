@@ -878,20 +878,34 @@ function refreshCards() {
   if (cardEls.shovel) cardEls.shovel.classList.toggle('sel', selected === 'shovel');
 }
 
-/* ---------------- responsive fit ----------------
-   The field is a fixed 1000x560 design. Sizing by viewport width alone
-   overflowed phone screens (worst in landscape): HUD + card bar + wave
-   bar + stage stacked taller than the screen and overflow:hidden
-   clipped the rest. fitStage() measures the real chrome heights and
-   caps the unified column width (--uW, shared by HUD / card bar /
-   wave bar / stage) so the WHOLE column fits the visible viewport —
-   letterboxed, never cropped, never scrollable. visualViewport is
-   used when available so Android browser chrome showing/hiding
-   re-fits instead of clipping the bottom. Desktop (>= ~1030px wide
-   with room to spare) resolves to the same 1000px design as before. */
+/* ---------------- viewport pinning + responsive fit ----------------
+   The field is a fixed 1000x560 design. Round 1 sized the column by
+   viewport width alone and it overflowed phone screens. Round 2 sized
+   by the visible viewport but left #wrap in normal document flow at
+   height:100dvh — on Edge (Android) the layout viewport stays taller
+   than the VISIBLE one while the tab strip + address bar are up, so
+   the column's top slid under the browser bars (defender card names
+   clipped — "can't see what I'm picking") and tall overlay content
+   spilled below the fold. The bulletproof arrangement, round 3: the
+   game is the entire page, #wrap is position:fixed, and pinWrap()
+   drives its size AND offset from window.visualViewport
+   (width/height/offsetLeft/offsetTop) on vv resize + scroll, so the
+   column always sits exactly inside the visible area. fitStage()
+   measures the real chrome heights and caps the unified column width
+   (--uW, shared by HUD / card bar / wave bar / stage) by that same
+   visible box, so the WHOLE column fits by width and height —
+   letterboxed, never cropped, never scrollable. Desktop (>= ~1030px
+   wide with room to spare) resolves to the same 1000px design. */
+function vvBox() {
+  const vv = window.visualViewport;
+  if (vv && vv.width) {
+    return { w: vv.width, h: vv.height, ox: vv.offsetLeft || 0, oy: vv.offsetTop || 0 };
+  }
+  return { w: window.innerWidth || 1000, h: window.innerHeight || 800, ox: 0, oy: 0 };
+}
 let lastFitW = 0;
 function chromeHeight() {
-  let h = 40;  // wrap padding (16) + flex gaps (18) + fudge
+  let h = 48;  // wrap padding (16) + flex gaps (18) + safe-area/fudge slack
   for (const id of ['hud', 'cardbar', 'waveBar', 'rotateHint']) {
     const e = el(id);
     if (e && !e.classList.contains('hidden')) h += (e.offsetHeight || 0);
@@ -899,9 +913,8 @@ function chromeHeight() {
   return h;
 }
 function fitStage() {
-  const vv = window.visualViewport;
-  const vw = (vv && vv.width) || window.innerWidth || 1000;
-  const vh = (vv && vv.height) || window.innerHeight || 800;
+  const box = vvBox();
+  const vw = box.w, vh = box.h;
   const hint = el('rotateHint');
   let best = Math.min(vw * 0.97, W);
   for (let i = 0; i < 3; i++) {           // card bar wraps -> heights shift; converge, keep the min
@@ -921,11 +934,28 @@ function applyUW(px) {
   if (de && de.style && de.style.setProperty) de.style.setProperty('--uW', px + 'px');
   const st = el('stage'); if (st) st.style.width = px + 'px';
 }
-window.addEventListener('resize', fitStage);
-window.addEventListener('load', fitStage);
-window.addEventListener('orientationchange', () => setTimeout(fitStage, 60));
-if (window.visualViewport) window.visualViewport.addEventListener('resize', fitStage);
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitStage);
+/* Pin #wrap onto the visible viewport, then re-fit the column. Any
+   browser-bar slide (vv scroll) or chrome show/hide (vv resize)
+   re-pins, so the game can never sit under Edge's bars or off-fold. */
+function pinWrap() {
+  const wrap = el('wrap');
+  const box = vvBox();
+  if (wrap && wrap.style) {
+    wrap.style.width = box.w + 'px';
+    wrap.style.height = box.h + 'px';
+    wrap.style.left = box.ox + 'px';
+    wrap.style.top = box.oy + 'px';
+  }
+  return fitStage();
+}
+window.addEventListener('resize', pinWrap);
+window.addEventListener('load', pinWrap);
+window.addEventListener('orientationchange', () => setTimeout(pinWrap, 60));
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', pinWrap);
+  window.visualViewport.addEventListener('scroll', pinWrap);
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(pinWrap);
 
 /* ---------------- overlays + flow ---------------- */
 function showOnly(id) {
@@ -1097,7 +1127,7 @@ async function boot() {
   CG.loadingStart();
   buildSprites();
   buildCards();
-  fitStage();
+  pinWrap();
   wireUi();
   refreshMenu(); updateMute(); updateHud(); refreshTut();
   showOnly('menu');
@@ -1125,6 +1155,8 @@ window.__avb = {
   tutDone: () => save.tutDone,
   gridAt: (r, c) => grid[r][c],
   fitStage,
+  pinWrap,
+  vvBox,
   stageW: () => lastFitW,
   CG
 };
