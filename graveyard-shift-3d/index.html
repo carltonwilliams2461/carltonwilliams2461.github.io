@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>GRAVEYARD SHIFT — Idle Defense</title>
+<meta name="description" content="Graveyard Shift: a 3D idle tower-defense. Your turrets work the night shift — and some zombies get purified into your Bone Mill crew instead of killed. A C E Williams Games title.">
+<link rel="icon" href="data:,">
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<style>
+  :root { color-scheme: dark; --vvh: 100dvh; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    background:#070a14; color:#efe6cf;
+    font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;
+    height:100%; height:100dvh; overflow:hidden; overscroll-behavior:none;
+    -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  #wrap {
+    position:fixed; left:0; top:0; width:100%; height:100dvh;
+    display:flex; flex-direction:column; align-items:center;
+    padding:calc(5px + env(safe-area-inset-top,0px)) calc(6px + env(safe-area-inset-right,0px)) calc(5px + env(safe-area-inset-bottom,0px)) calc(6px + env(safe-area-inset-left,0px));
+    touch-action:none; overscroll-behavior:none; gap:5px;
+  }
+  /* ---------- HUD ---------- */
+  #hud { display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:center; width:100%; max-width:1060px; font-weight:bold; font-size:clamp(12px,2.2vw,15px); }
+  .pill { background:#121a2e; color:#ffd98a; border:2px solid #41538a; border-radius:999px; padding:2px 10px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .pill.dim { color:#b9c8ff; border-color:#2c3a63; }
+  .pill .sub { color:#9fb0dd; font-size:.82em; }
+  #gateWrap { display:flex; align-items:center; gap:6px; background:#121a2e; border:2px solid #41538a; border-radius:999px; padding:3px 10px; }
+  #gateBarOuter { width:clamp(70px,14vw,130px); height:10px; background:#2a1420; border-radius:99px; overflow:hidden; border:1px solid #5a2c40; }
+  #gateBar { display:block; height:100%; width:100%; background:linear-gradient(90deg,#e2557a,#ff8a5c); transition:width .25s; }
+  .hbtn {
+    background:#121a2e; color:#ffd98a; border:2px solid #41538a; border-radius:10px; cursor:pointer;
+    font-size:clamp(13px,2.2vw,15px); padding:2px 11px; font-weight:bold; line-height:1.3;
+    min-width:42px; min-height:42px; display:inline-flex; align-items:center; justify-content:center; gap:4px; position:relative;
+  }
+  .hbtn:active { transform:translateY(1px); }
+  .hbtn .badge { position:absolute; top:-7px; right:-7px; background:#e2557a; color:#fff; border-radius:99px; font-size:11px; padding:1px 6px; border:2px solid #0b0e1a; }
+  #phaseLbl { color:#cfe0ff; }
+  /* ---------- stage ---------- */
+  #stage {
+    position:relative; width:min(100%, 1020px, calc((var(--vvh,100dvh) - 158px) * 1.6875));
+    aspect-ratio:16/9.5; max-height:calc(var(--vvh,100dvh) - 158px);
+    border:3px solid #2c3a63; border-radius:12px; overflow:hidden; background:#0a0f22;
+    box-shadow:0 18px 60px rgba(0,0,0,.65); flex:none;
+  }
+  #stage canvas { display:block; width:100%; height:100%; touch-action:none; }
+  #floaters { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .floater { position:absolute; font-weight:900; font-size:15px; color:#ffe9a8; text-shadow:0 2px 4px #000,0 0 8px rgba(0,0,0,.6); transform:translate(-50%,-50%); white-space:nowrap; will-change:transform,opacity; }
+  #vig { position:absolute; inset:0; pointer-events:none; box-shadow:inset 0 0 90px rgba(2,4,12,.75); border-radius:9px; }
+  #err { position:absolute; inset:0; display:none; align-items:center; justify-content:center; text-align:center; background:rgba(24,4,4,.94); color:#ffb3a0; font-weight:bold; padding:20px; font-size:16px; z-index:30; }
+  /* ---------- bars under stage ---------- */
+  #underbar { display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap; width:100%; max-width:1060px; }
+  #callWaveBtn {
+    background:linear-gradient(180deg,#31457f,#22335f); color:#ffe9a8; border:2px solid #5a76b8; border-radius:12px;
+    font-weight:900; font-size:clamp(13px,2.4vw,16px); padding:7px 16px; cursor:pointer; min-height:44px;
+  }
+  #callWaveBtn:disabled { opacity:.45; cursor:default; }
+  #callWaveBtn:active { transform:translateY(1px); }
+  #tip { color:#9fb0dd; font-size:clamp(11px,2vw,13px); text-align:center; }
+  /* ---------- tutorial ---------- */
+  #tutBar {
+    position:absolute; left:50%; bottom:10px; transform:translateX(-50%); z-index:12;
+    background:rgba(10,14,28,.93); border:2px solid #ffd98a; color:#ffeec2; font-weight:bold;
+    border-radius:999px; padding:7px 14px 7px 16px; font-size:clamp(12px,2.4vw,15px);
+    display:none; align-items:center; gap:10px; max-width:94%; text-align:center; box-shadow:0 6px 24px rgba(0,0,0,.6);
+  }
+  #tutBar.on { display:flex; }
+  #tutSkip { background:#ffd98a; color:#241a04; border:none; border-radius:99px; font-weight:900; cursor:pointer; padding:3px 10px; min-height:30px; }
+  /* ---------- toast / banner ---------- */
+  #toast {
+    position:absolute; left:50%; top:12px; transform:translateX(-50%) translateY(-8px); z-index:20;
+    background:rgba(10,14,28,.94); border:2px solid #41538a; color:#ffeec2; border-radius:12px;
+    padding:8px 16px; font-weight:bold; font-size:clamp(12px,2.4vw,15px); opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s; max-width:92%; text-align:center;
+  }
+  #toast.on { opacity:1; transform:translateX(-50%) translateY(0); }
+  #banner {
+    position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) scale(.8); z-index:21;
+    font-size:clamp(26px,6vw,52px); font-weight:900; color:#ffe9a8; text-align:center; pointer-events:none;
+    text-shadow:0 3px 0 #7a4a12,0 6px 22px rgba(0,0,0,.8); opacity:0; transition:opacity .3s, transform .3s; white-space:nowrap;
+  }
+  #banner.on { opacity:1; transform:translate(-50%,-50%) scale(1); }
+  /* ---------- overlays ---------- */
+  .overlay {
+    position:absolute; inset:0; z-index:15; display:flex; overflow-y:auto; padding:10px;
+    background:rgba(4,6,14,.72); backdrop-filter:blur(2px);
+  }
+  .overlay.hidden { display:none; }
+  .panel {
+    margin:auto; width:min(560px,96%); background:linear-gradient(180deg,#16203c,#0e1528);
+    border:3px solid #41538a; border-radius:16px; padding:16px 18px; box-shadow:0 20px 60px rgba(0,0,0,.7);
+    max-height:100%;
+  }
+  .panel h1 { font-size:clamp(26px,5.4vw,40px); letter-spacing:1px; color:#ffe9a8; text-align:center; text-shadow:0 3px 0 #5c3a08,0 6px 18px rgba(0,0,0,.7); }
+  .panel h2 { font-size:clamp(18px,3.6vw,24px); color:#ffe9a8; text-align:center; margin-bottom:6px; }
+  .panel p { color:#cdd8f5; font-size:clamp(13px,2.4vw,15px); line-height:1.45; text-align:center; }
+  .panel .small { font-size:12px; color:#8fa1cc; }
+  .btnrow { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+  .bigbtn {
+    background:linear-gradient(180deg,#e8a83c,#c97f16); color:#241a04; border:2px solid #ffe1a0; border-radius:12px;
+    font-weight:900; font-size:clamp(15px,3vw,19px); padding:10px 22px; cursor:pointer; min-height:48px;
+    box-shadow:0 4px 0 #7a4a12,0 8px 18px rgba(0,0,0,.5);
+  }
+  .bigbtn:active { transform:translateY(2px); box-shadow:0 2px 0 #7a4a12; }
+  .ghostbtn {
+    background:#182540; color:#cfe0ff; border:2px solid #41538a; border-radius:12px;
+    font-weight:bold; font-size:clamp(13px,2.6vw,16px); padding:9px 16px; cursor:pointer; min-height:44px;
+  }
+  .ghostbtn:active { transform:translateY(1px); }
+  .menustats { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin:10px 0 2px; }
+  /* ---------- sheets (build / turret) ---------- */
+  .sheet {
+    position:absolute; left:50%; bottom:8px; transform:translateX(-50%); z-index:14; width:min(620px,96%);
+    background:linear-gradient(180deg,#16203c,#0d1425); border:3px solid #41538a; border-radius:16px;
+    padding:10px 12px; box-shadow:0 16px 44px rgba(0,0,0,.7); max-height:86%; overflow-y:auto;
+  }
+  .sheet.hidden { display:none; }
+  .sheet h3 { color:#ffe9a8; font-size:17px; text-align:center; margin-bottom:8px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:8px; }
+  .card {
+    background:#1a2748; border:2px solid #41538a; border-radius:12px; padding:9px 10px; cursor:pointer; text-align:left;
+    color:#efe6cf; font-family:inherit; min-height:44px;
+  }
+  .card:hover { border-color:#ffd98a; }
+  .card.cant { opacity:.62; cursor:default; }
+  .card .nm { font-weight:900; font-size:14.5px; color:#ffe9a8; display:block; }
+  .card .ds { font-size:11.5px; color:#b9c8ff; display:block; line-height:1.35; margin:3px 0; }
+  .card .ct { font-weight:900; font-size:13.5px; color:#ffd98a; }
+  .card .ct.short { color:#ff9a8a; }
+  .card.glow { border-color:#ffd98a; box-shadow:0 0 0 2px #ffd98a,0 0 18px rgba(255,217,138,.5); }
+  .sheet .xrow { display:flex; justify-content:flex-end; margin-top:8px; }
+  /* ---------- upgrades tree ---------- */
+  .treewrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(158px,1fr)); gap:9px; margin-top:8px; }
+  .branch { background:#101a33; border:2px solid #2c3a63; border-radius:12px; padding:8px; }
+  .branch h4 { color:#9fd8ff; font-size:13px; text-align:center; letter-spacing:.5px; margin-bottom:7px; }
+  .node { background:#1a2748; border:2px solid #41538a; border-radius:10px; padding:8px; margin-bottom:7px; }
+  .node.locked { opacity:.55; }
+  .node .nm { font-weight:900; font-size:13.5px; color:#ffe9a8; display:block; }
+  .node .ds { font-size:11px; color:#b9c8ff; display:block; line-height:1.35; margin:2px 0 5px; }
+  .node .pips { color:#ffd98a; letter-spacing:2px; font-size:12px; }
+  .node .req { color:#ff9a8a; font-size:11px; font-weight:bold; display:block; }
+  .buybtn { background:linear-gradient(180deg,#31457f,#22335f); color:#ffe9a8; border:2px solid #5a76b8; border-radius:8px; font-weight:900; padding:5px 10px; cursor:pointer; min-height:38px; font-size:13px; width:100%; margin-top:4px; }
+  .buybtn:disabled { opacity:.5; cursor:default; }
+  .buybtn .short { color:#ff9a8a; }
+  /* ---------- quests ---------- */
+  .quest { background:#1a2748; border:2px solid #41538a; border-radius:12px; padding:9px 12px; margin:7px 0; text-align:left; }
+  .quest .qt { font-weight:900; color:#ffe9a8; font-size:14.5px; }
+  .quest .qbar { height:9px; background:#0d1425; border-radius:99px; overflow:hidden; margin:6px 0 4px; border:1px solid #2c3a63; }
+  .quest .qfill { height:100%; background:linear-gradient(90deg,#7fd08a,#b8e986); width:0%; transition:width .3s; }
+  .quest .qr { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .quest .qp { color:#b9c8ff; font-size:12.5px; font-weight:bold; }
+  /* ---------- ad veil ---------- */
+  #adveil { position:absolute; inset:0; z-index:40; background:rgba(2,3,8,.92); display:flex; align-items:center; justify-content:center; color:#ffe9a8; font-weight:900; font-size:20px; }
+  #adveil.hidden { display:none; }
+  .hidden { display:none !important; }
+  @media (max-height:520px) {
+    .panel { padding:10px 12px; }
+    .panel h1 { font-size:24px; }
+    #banner { font-size:26px; }
+    .sheet { max-height:94%; }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <span class="pill">🦴 <span id="bones">100</span></span>
+    <span class="pill dim">🌙 Night <span id="nightLbl">1</span> <span class="sub" id="locLbl">· The Graveyard</span></span>
+    <span class="pill dim" id="waveLbl">At the gate…</span>
+    <span id="gateWrap">⛓️ <span id="gateBarOuter"><span id="gateBar"></span></span> <span id="gateLbl">100</span></span>
+    <span class="pill dim">🧟‍♂️ Crew <span id="workersLbl">0</span></span>
+    <span class="pill dim">🌟 <span id="shardLbl">0</span></span>
+    <span class="spacer" style="flex:1"></span>
+    <button class="hbtn" id="questBtn" title="Daily quests">📜<span class="badge hidden" id="questBadge">!</span></button>
+    <button class="hbtn" id="upgBtn" title="Upgrades">⬆️</button>
+    <button class="hbtn" id="pauseBtn" title="Pause (P)">⏸</button>
+    <button class="hbtn" id="muteBtn" title="Mute (M)">🔊</button>
+  </div>
+
+  <div id="stage">
+    <div id="floaters"></div>
+    <div id="vig"></div>
+    <div id="err"></div>
+    <div id="toast"></div>
+    <div id="banner"></div>
+
+    <div id="tutBar"><span id="tutText"></span><button id="tutSkip">Skip ✕</button></div>
+
+    <!-- MENU -->
+    <div class="overlay" id="menu">
+      <div class="panel">
+        <h1>GRAVEYARD SHIFT</h1>
+        <p><b>Idle Defense.</b> The dead rise at dusk. Your turrets work the night shift — and the
+        <b style="color:#ffd98a">Purifier</b> doesn't kill: it turns zombies into golden <b>Bone Mill</b>
+        workers who earn 🦴 forever, even while you're away. Every purifier plot is a plot that isn't shooting.</p>
+        <div class="menustats">
+          <span class="pill">🦴 <span id="mBones">100</span></span>
+          <span class="pill dim">Best night <span id="mBest">0</span></span>
+          <span class="pill dim">Crew <span id="mCrew">0</span> · <span id="mRate">0</span> 🦴/min</span>
+          <span class="pill dim">🌟 <span id="mShards">0</span></span>
+        </div>
+        <div class="btnrow">
+          <button class="bigbtn" id="startBtn">🌙 Start the Night</button>
+          <button class="ghostbtn" id="howBtn">How to Play</button>
+          <button class="ghostbtn" id="menuUpgBtn">⬆️ Upgrades</button>
+          <button class="ghostbtn" id="menuQuestBtn">📜 Daily Quests</button>
+        </div>
+        <p class="small" id="menuPrestigeLine"></p>
+      </div>
+    </div>
+
+    <!-- WHILE YOU WERE GONE -->
+    <div class="overlay hidden" id="away">
+      <div class="panel">
+        <h2>🌅 While You Were Gone</h2>
+        <p id="awayText">Your Mill crew kept working.</p>
+        <div class="btnrow"><button class="bigbtn" id="awayBtn">Collect</button></div>
+      </div>
+    </div>
+
+    <!-- BUILD SHEET -->
+    <div class="sheet hidden" id="buildSheet">
+      <h3>Build on this plot</h3>
+      <div class="cards" id="buildCards"></div>
+      <div class="xrow"><button class="ghostbtn" id="buildClose">Close</button></div>
+    </div>
+
+    <!-- TURRET SHEET -->
+    <div class="sheet hidden" id="turretSheet">
+      <h3 id="turretTitle">Turret</h3>
+      <p id="turretInfo" style="color:#cdd8f5;font-size:13.5px;text-align:center;line-height:1.4"></p>
+      <div class="btnrow">
+        <button class="bigbtn" id="turretUpBtn">Upgrade</button>
+        <button class="ghostbtn" id="turretSellBtn">Sell</button>
+        <button class="ghostbtn" id="turretClose">Close</button>
+      </div>
+    </div>
+
+    <!-- UPGRADES -->
+    <div class="overlay hidden" id="upgrades">
+      <div class="panel" style="width:min(680px,97%)">
+        <h2>⬆️ The Upgrade Tree</h2>
+        <p>Permanent, forever — through dawns, gate falls and New Moons. 🦴 <b id="upgBones">0</b></p>
+        <div class="treewrap" id="treeWrap"></div>
+        <div class="btnrow"><button class="bigbtn" id="upgClose">Done</button></div>
+      </div>
+    </div>
+
+    <!-- QUESTS -->
+    <div class="overlay hidden" id="quests">
+      <div class="panel">
+        <h2>📜 Daily Quests</h2>
+        <p>Fresh every dawn. Finished quests pay out right here.</p>
+        <div id="questList"></div>
+        <div class="btnrow"><button class="bigbtn" id="questClose">Done</button></div>
+      </div>
+    </div>
+
+    <!-- DAWN SUMMARY -->
+    <div class="overlay hidden" id="summary">
+      <div class="panel">
+        <h2 id="sumTitle">🌅 Dawn breaks</h2>
+        <p id="sumStats"></p>
+        <div class="btnrow">
+          <button class="bigbtn" id="nextNightBtn">🌙 Next Night</button>
+          <button class="ghostbtn hidden" id="prestigeBtn">🌟 New Moon</button>
+          <button class="ghostbtn" id="sumMenuBtn">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRESTIGE CONFIRM -->
+    <div class="overlay hidden" id="prestige">
+      <div class="panel">
+        <h2>🌟 The New Moon</h2>
+        <p id="prestigeText"></p>
+        <div class="btnrow">
+          <button class="bigbtn" id="prestigeGo">🌟 Prestige</button>
+          <button class="ghostbtn" id="prestigeCancel">Not yet</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GATE FELL -->
+    <div class="overlay hidden" id="over">
+      <div class="panel">
+        <h2>💥 The Gate Has Fallen</h2>
+        <p id="overText"></p>
+        <div class="btnrow">
+          <button class="bigbtn" id="retryBtn">🌙 Retry the Night</button>
+          <button class="ghostbtn" id="overMenuBtn">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAUSED -->
+    <div class="overlay hidden" id="paused">
+      <div class="panel">
+        <h2>⏸ Paused</h2>
+        <p>The night holds its breath.</p>
+        <div class="btnrow">
+          <button class="bigbtn" id="resumeBtn">▶ Resume</button>
+          <button class="ghostbtn" id="pauseMenuBtn">Menu</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOW TO PLAY -->
+    <div class="overlay hidden" id="howto">
+      <div class="panel">
+        <h2>How to Play</h2>
+        <p style="text-align:left">
+          🪦 <b>Zombies</b> shuffle from the graves (left) toward <b>the Gate</b> (right). If the Gate's HP hits 0, the night restarts — you keep everything you've built.<br><br>
+          🏮 <b>Tap a stone plot</b> to build: Lanterns zap, Sprinklers splash, Bells toll and slow, and the <b>Purifier Chalice</b> channels a zombie into a golden Mill worker instead of killing it.<br><br>
+          🦴 <b>Bones</b> pay for everything. Workers earn bones forever — even offline (up to 8 hours).<br><br>
+          👆 <b>Bonk</b> zombies by tapping them. ⬆️ The <b>upgrade tree</b> is permanent. 🌟 Every 5 nights held unlocks a <b>New Moon</b> prestige: reset the graveyard, keep a Moon Shard — <b>+20% bones, +15% damage, forever</b>.<br><br>
+          👹 On every 5th night, <b>The Undertaker</b> walks. Be ready.
+        </p>
+        <div class="btnrow"><button class="bigbtn" id="howClose">Got it</button></div>
+      </div>
+    </div>
+
+    <div id="adveil" class="hidden">A word from the night…</div>
+  </div>
+
+  <div id="underbar">
+    <button id="callWaveBtn">⚔️ Call the wave early</button>
+    <span id="tip">Tap a stone plot to build · tap a zombie to bonk it</span>
+  </div>
+</div>
+
+<script>
+/* Viewport pinning (studio standard): #wrap is position:fixed and is
+   continuously matched to window.visualViewport — height, width, offsets —
+   and the pinned height is published as --vvh for the stage fit math. */
+(function () {
+  var wrap = document.getElementById('wrap');
+  if (!wrap) return;
+  function pin() {
+    var vv = window.visualViewport, h, w, t = 0, l = 0;
+    if (vv) { h = vv.height; w = vv.width; t = vv.offsetTop; l = vv.offsetLeft; }
+    else { h = window.innerHeight; w = window.innerWidth; }
+    wrap.style.width = w + 'px';
+    wrap.style.height = h + 'px';
+    wrap.style.top = t + 'px';
+    wrap.style.left = l + 'px';
+    document.documentElement.style.setProperty('--vvh', h + 'px');
+  }
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', pin);
+    window.visualViewport.addEventListener('scroll', pin);
+  }
+  window.addEventListener('resize', pin);
+  window.addEventListener('orientationchange', pin);
+  pin();
+})();
+</script>
+<script type="module" src="game.js?v=gs3d2"></script>
+</body>
+</html>
