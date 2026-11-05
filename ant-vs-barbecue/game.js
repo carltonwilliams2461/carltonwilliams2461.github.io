@@ -878,6 +878,55 @@ function refreshCards() {
   if (cardEls.shovel) cardEls.shovel.classList.toggle('sel', selected === 'shovel');
 }
 
+/* ---------------- responsive fit ----------------
+   The field is a fixed 1000x560 design. Sizing by viewport width alone
+   overflowed phone screens (worst in landscape): HUD + card bar + wave
+   bar + stage stacked taller than the screen and overflow:hidden
+   clipped the rest. fitStage() measures the real chrome heights and
+   caps the unified column width (--uW, shared by HUD / card bar /
+   wave bar / stage) so the WHOLE column fits the visible viewport —
+   letterboxed, never cropped, never scrollable. visualViewport is
+   used when available so Android browser chrome showing/hiding
+   re-fits instead of clipping the bottom. Desktop (>= ~1030px wide
+   with room to spare) resolves to the same 1000px design as before. */
+let lastFitW = 0;
+function chromeHeight() {
+  let h = 40;  // wrap padding (16) + flex gaps (18) + fudge
+  for (const id of ['hud', 'cardbar', 'waveBar', 'rotateHint']) {
+    const e = el(id);
+    if (e && !e.classList.contains('hidden')) h += (e.offsetHeight || 0);
+  }
+  return h;
+}
+function fitStage() {
+  const vv = window.visualViewport;
+  const vw = (vv && vv.width) || window.innerWidth || 1000;
+  const vh = (vv && vv.height) || window.innerHeight || 800;
+  const hint = el('rotateHint');
+  let best = Math.min(vw * 0.97, W);
+  for (let i = 0; i < 3; i++) {           // card bar wraps -> heights shift; converge, keep the min
+    if (hint) hint.classList.toggle('hidden', !(vh > vw && best < 540));
+    const byHeight = (vh - chromeHeight()) * (W / H);
+    const w = Math.max(240, Math.min(vw * 0.97, W, byHeight));
+    if (Math.abs(w - best) < 1) { best = w; break; }
+    best = Math.min(best, w);
+    applyUW(best);
+  }
+  applyUW(best);
+  lastFitW = best;
+  return best;
+}
+function applyUW(px) {
+  const de = document.documentElement;
+  if (de && de.style && de.style.setProperty) de.style.setProperty('--uW', px + 'px');
+  const st = el('stage'); if (st) st.style.width = px + 'px';
+}
+window.addEventListener('resize', fitStage);
+window.addEventListener('load', fitStage);
+window.addEventListener('orientationchange', () => setTimeout(fitStage, 60));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fitStage);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitStage);
+
 /* ---------------- overlays + flow ---------------- */
 function showOnly(id) {
   for (const oid of ['menu', 'howto', 'shop', 'pauseOv', 'overOv']) {
@@ -1048,6 +1097,7 @@ async function boot() {
   CG.loadingStart();
   buildSprites();
   buildCards();
+  fitStage();
   wireUi();
   refreshMenu(); updateMute(); updateHud(); refreshTut();
   showOnly('menu');
@@ -1074,5 +1124,7 @@ window.__avb = {
   tutStep: () => save.tutStep,
   tutDone: () => save.tutDone,
   gridAt: (r, c) => grid[r][c],
+  fitStage,
+  stageW: () => lastFitW,
   CG
 };
