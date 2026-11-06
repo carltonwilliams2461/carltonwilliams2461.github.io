@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BidRight Tools — Contractor Quote, Margin & Break-Even Calculators</title>
+  <meta name="description" content="Free practical calculators for contractors and local service businesses: build a profitable quote, find your true hourly rate, convert margin and markup, calculate break-even jobs, and estimate materials with waste.">
+  <meta name="theme-color" content="#0b2440">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "BidRight Tools",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Any",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+    "description": "Contractor quote, hourly-rate, margin, break-even, and materials calculators that run entirely in the browser."
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="BidRight Tools home">
+      <img src="assets/favicon.svg" alt="" width="42" height="42">
+      <span>BidRight <strong>Tools</strong></span>
+    </a>
+    <nav aria-label="Calculator navigation">
+      <a href="#quote">Quote Builder</a>
+      <a href="#rate">Hourly Rate</a>
+      <a href="#margin">Margin</a>
+      <a href="#breakeven">Break-Even</a>
+      <a href="#materials">Materials</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">CONTRACTOR PRICING TOOLKIT</p>
+        <h1>Price the job.<br>Protect the margin.</h1>
+        <p class="lede">BidRight turns scattered labor, material, overhead, and profit assumptions into one clear price — before the quote goes out the door.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#quote">Build a quote</a>
+          <a class="button secondary" href="#method">See the method</a>
+        </div>
+        <ul class="hero-points" aria-label="Product highlights">
+          <li>No account</li>
+          <li>No subscription</li>
+          <li>Runs in your browser</li>
+          <li>Printable quote summary</li>
+        </ul>
+      </div>
+      <aside class="hero-card" aria-label="Example result">
+        <p class="card-label">LIVE PRICING LOGIC</p>
+        <div class="hero-number"><span>Costs</span><strong>→</strong><span>Margin</span><strong>→</strong><span>Quote</span></div>
+        <p>Overhead and contingency are added first. Gross margin is then calculated correctly — not confused with markup — so the final price is the price the business actually needs.</p>
+        <div class="mini-grid">
+          <div><span>5</span><small>working tools</small></div>
+          <div><span>0</span><small>data uploaded</small></div>
+          <div><span>1</span><small>clear result</small></div>
+        </div>
+      </aside>
+    </section>
+
+    <section id="quote" class="tool-section quote-section">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 01</p>
+        <h2>Contractor Quote Builder</h2>
+        <p>Start with the sample numbers, replace them with the job in front of you, and print a clean summary when the price makes sense.</p>
+      </div>
+
+      <div class="quote-layout">
+        <form id="quoteForm" class="panel form-panel">
+          <fieldset>
+            <legend>Project details</legend>
+            <div class="grid two">
+              <label>Business name<input id="businessName" type="text" value="Northstar Remodeling"></label>
+              <label>Client name<input id="clientName" type="text" value="Sample Client"></label>
+              <label>Project name<input id="projectName" type="text" value="Kitchen refresh"></label>
+              <label>Quote date<input id="quoteDate" type="date"></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Material &amp; purchased items</legend>
+            <div id="materialRows" class="dynamic-rows"></div>
+            <button class="button small ghost" type="button" id="addMaterial">+ Add material item</button>
+          </fieldset>
+
+          <fieldset>
+            <legend>Labor</legend>
+            <div id="laborRows" class="dynamic-rows"></div>
+            <button class="button small ghost" type="button" id="addLabor">+ Add labor role</button>
+            <p class="hint">Use the fully burdened hourly cost — wages plus payroll taxes, insurance, and other direct labor burden — not the employee's base wage alone.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Other direct job costs</legend>
+            <div class="grid three">
+              <label>Subcontractors ($)<input id="subCost" type="number" min="0" step="0.01" value="850"></label>
+              <label>Equipment / rentals ($)<input id="equipmentCost" type="number" min="0" step="0.01" value="225"></label>
+              <label>Permits &amp; fees ($)<input id="permitCost" type="number" min="0" step="0.01" value="140"></label>
+              <label>Travel / delivery ($)<input id="travelCost" type="number" min="0" step="0.01" value="110"></label>
+              <label>Other direct cost ($)<input id="otherCost" type="number" min="0" step="0.01" value="75"></label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Pricing assumptions</legend>
+            <div class="grid three">
+              <label>Overhead recovery (%)<input id="overheadPct" type="number" min="0" step="0.1" value="12"></label>
+              <label>Contingency (%)<input id="contingencyPct" type="number" min="0" step="0.1" value="5"></label>
+              <label>Target gross margin (%)<input id="marginPct" type="number" min="0" max="95" step="0.1" value="30"></label>
+              <label>Taxable base
+                <select id="taxBase">
+                  <option value="materials">Materials only</option>
+                  <option value="none">No tax in quote</option>
+                  <option value="pretax">Entire pre-tax price</option>
+                </select>
+              </label>
+              <label>Sales tax (%)<input id="taxPct" type="number" min="0" step="0.01" value="8.25"></label>
+              <label>Deposit requested (%)<input id="depositPct" type="number" min="0" max="100" step="0.1" value="30"></label>
+            </div>
+            <p class="hint">Tax rules vary by state, trade, and job type. Confirm how tax applies before sending a binding quote.</p>
+          </fieldset>
+        </form>
+
+        <aside class="panel results-panel" aria-live="polite">
+          <p class="card-label">QUOTE RESULT</p>
+          <div class="total-box">
+            <span>Total quote</span>
+            <strong id="quoteTotal">$0.00</strong>
+            <small id="quoteTotalNote">Includes selected tax treatment</small>
+          </div>
+          <dl class="result-list">
+            <div><dt>Materials</dt><dd id="materialsTotal">$0.00</dd></div>
+            <div><dt>Labor cost</dt><dd id="laborTotal">$0.00</dd></div>
+            <div><dt>Other direct costs</dt><dd id="otherTotal">$0.00</dd></div>
+            <div><dt>Direct-cost subtotal</dt><dd id="directTotal">$0.00</dd></div>
+            <div><dt>Overhead recovery</dt><dd id="overheadTotal">$0.00</dd></div>
+            <div><dt>Contingency</dt><dd id="contingencyTotal">$0.00</dd></div>
+            <div><dt>Pre-tax price</dt><dd id="pretaxTotal">$0.00</dd></div>
+            <div><dt>Tax</dt><dd id="taxTotal">$0.00</dd></div>
+            <div class="profit"><dt>Expected gross profit</dt><dd id="grossProfit">$0.00</dd></div>
+            <div><dt>Revenue per labor hour</dt><dd id="revenuePerHour">$0.00</dd></div>
+            <div><dt>Deposit due</dt><dd id="depositDue">$0.00</dd></div>
+            <div><dt>Balance after deposit</dt><dd id="balanceDue">$0.00</dd></div>
+          </dl>
+          <div class="result-actions">
+            <button class="button primary" type="button" id="printQuote">Print quote summary</button>
+            <button class="button secondary dark" type="button" id="copyQuote">Copy summary</button>
+          </div>
+          <p id="copyStatus" class="copy-status" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="tools-grid">
+      <article id="rate" class="panel tool-card">
+        <p class="eyebrow">TOOL 02</p>
+        <h2>True Hourly Rate Finder</h2>
+        <p>Find the labor rate needed to cover owner pay, team wages, overhead, non-billable time, and target profit.</p>
+        <form id="rateForm" class="stack-form">
+          <label>Annual labor cost to cover ($)<input id="annualLabor" type="number" min="0" step="0.01" value="78000"></label>
+          <label>Annual business overhead ($)<input id="annualOverhead" type="number" min="0" step="0.01" value="26000"></label>
+          <label>Billable hours per year<input id="billableHours" type="number" min="1" step="1" value="1250"></label>
+          <label>Target profit on labor revenue (%)<input id="rateProfitPct" type="number" min="0" max="95" step="0.1" value="20"></label>
+        </form>
+        <div class="callout-result"><span>Required billable rate</span><strong id="requiredRate">$0.00/hr</strong><small id="rateNote"></small></div>
+      </article>
+
+      <article id="margin" class="panel tool-card">
+        <p class="eyebrow">TOOL 03</p>
+        <h2>Margin ↔ Markup Converter</h2>
+        <p>Margin is profit divided by selling price. Markup is profit divided by cost. They are not interchangeable.</p>
+        <form id="marginForm" class="stack-form">
+          <label>Cost ($)<input id="marginCost" type="number" min="0" step="0.01" value="1000"></label>
+          <label>Goal type
+            <select id="marginMode"><option value="margin">Target gross margin</option><option value="markup">Target markup</option></select>
+          </label>
+          <label>Target percentage (%)<input id="marginTarget" type="number" min="0" max="99.99" step="0.1" value="30"></label>
+        </form>
+        <div class="callout-result"><span>Selling price</span><strong id="marginPrice">$0.00</strong><small id="marginNote"></small></div>
+      </article>
+
+      <article id="breakeven" class="panel tool-card">
+        <p class="eyebrow">TOOL 04</p>
+        <h2>Break-Even Job Calculator</h2>
+        <p>See how many average jobs must close each month before the business starts making money.</p>
+        <form id="breakevenForm" class="stack-form">
+          <label>Monthly fixed costs ($)<input id="monthlyFixed" type="number" min="0" step="0.01" value="8500"></label>
+          <label>Average job revenue ($)<input id="averageTicket" type="number" min="0" step="0.01" value="6500"></label>
+          <label>Average gross margin (%)<input id="averageMargin" type="number" min="0" max="100" step="0.1" value="32"></label>
+        </form>
+        <div class="callout-result"><span>Jobs needed per month</span><strong id="jobsNeeded">0</strong><small id="breakevenNote"></small></div>
+      </article>
+
+      <article id="materials" class="panel tool-card">
+        <p class="eyebrow">TOOL 05</p>
+        <h2>Materials &amp; Waste Estimator</h2>
+        <p>Convert project area into order quantity using package coverage, expected waste, and unit price.</p>
+        <form id="materialsForm" class="stack-form">
+          <label>Project area (sq. ft.)<input id="projectArea" type="number" min="0" step="0.01" value="420"></label>
+          <label>Coverage per package (sq. ft.)<input id="packageCoverage" type="number" min="0.01" step="0.01" value="24"></label>
+          <label>Waste / cuts allowance (%)<input id="wastePct" type="number" min="0" step="0.1" value="10"></label>
+          <label>Price per package ($)<input id="packagePrice" type="number" min="0" step="0.01" value="58"></label>
+        </form>
+        <div class="callout-result"><span>Packages to order</span><strong id="packagesNeeded">0</strong><small id="materialsNote"></small></div>
+      </article>
+    </section>
+
+    <section id="method" class="method-section">
+      <div>
+        <p class="eyebrow">THE METHOD</p>
+        <h2>Why “cost plus 30%” can still lose money</h2>
+        <p>A 30% markup on a $10,000 cost produces an $13,000 price and only a 23.1% gross margin. A true 30% margin requires a $14,285.71 price. BidRight keeps that distinction visible and layers overhead and contingency before profit is calculated.</p>
+      </div>
+      <ol class="method-steps">
+        <li><strong>Start with direct costs.</strong> Materials, burdened labor, subcontractors, rentals, permits, and job-specific travel.</li>
+        <li><strong>Recover overhead.</strong> Rent, software, vehicles, insurance, phones, and office time do not disappear because they are not on the job site.</li>
+        <li><strong>Add contingency deliberately.</strong> Protect the estimate from normal unknowns instead of silently eating them later.</li>
+        <li><strong>Price from margin.</strong> Gross profit is what remains after direct job costs; margin states that profit as a share of the selling price.</li>
+      </ol>
+    </section>
+
+    <section class="faq-section">
+      <p class="eyebrow">QUESTIONS</p>
+      <h2>Built for owners, estimators, and office managers</h2>
+      <div class="faq-grid">
+        <article><h3>Does BidRight store my numbers?</h3><p>No. Calculations happen locally in this page. The current version has no account, database, analytics, or server-side form submission.</p></article>
+        <article><h3>Can I use the quote as a contract?</h3><p>No. The printable output is an estimating summary. Use your own terms, scope, exclusions, change-order process, licensing, and legal documents for a binding agreement.</p></article>
+        <article><h3>How could this site earn revenue?</h3><p>Natural paths include display advertising after traffic is established, affiliate links to estimating/job-management software, a premium template pack, or white-label licensing to trade associations and suppliers.</p></article>
+        <article><h3>What should be added next?</h3><p>Likely expansions are change-order pricing, crew-day rate planning, payment schedules, paint/concrete/tile-specific estimators, and saved quote templates.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>BidRight Tools</strong> — practical pricing calculators for local service businesses.</p>
+    <p class="fineprint">Estimates only. Verify tax treatment, labor burden, contract terms, and local requirements before relying on a quote.</p>
+  </footer>
+
+  <section id="printSheet" class="print-sheet" aria-hidden="true">
+    <h1 id="printTitle">Quote Summary</h1>
+    <p id="printMeta"></p>
+    <table><tbody id="printRows"></tbody></table>
+    <p class="print-total">Total: <strong id="printTotal"></strong></p>
+    <p>This summary is an estimate, not a contract. Scope, exclusions, payment terms, taxes, permits, and change-order terms must be confirmed in the seller's formal proposal.</p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
