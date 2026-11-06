@@ -1,302 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Ant vs Barbecue — Endless Lane Defense</title>
-<meta name="description" content="The ants are coming for the feast. Hold the picnic blanket with grills, swatters, hoses and candles — and watch out for Crumb Thieves. Endless waves, endless cookout.">
-<!-- CrazyGames SDK v3 — must load before game code. If it fails to load
-     (plain static host / local dev), the game runs fully standalone. -->
-<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
-<style>
-  :root { color-scheme: light; }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html, body {
-    background:radial-gradient(130% 95% at 50% 0%, #3a5c2f 0%, #2e4a26 55%, #203619 100%); color:#2b1c10;
-    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
-    height:100%; height:100dvh; overflow:hidden; overscroll-behavior:none;
-    -webkit-user-select:none; user-select:none;
-    -webkit-tap-highlight-color: transparent;
-  }
-  /* The game is the ENTIRE page. #wrap is position:fixed and game.js
-     (pinWrap) drives its size + offset from window.visualViewport, so
-     the column always sits exactly inside the visible area — Edge's
-     tab strip / address bar can never cover the top of the game, and
-     the page itself can never scroll. CSS size here is a pre-JS
-     fallback only. Padding respects the device safe areas. */
-  #wrap {
-    position:fixed; left:0; top:0; width:100%; height:100dvh;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
-    padding:calc(8px + env(safe-area-inset-top, 0px)) calc(8px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));
-    touch-action:none;
-  }
-  #hud {
-    width:var(--uW, min(97vw, 1000px)); display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-    font-size:clamp(12px, 2.4vw, 17px); font-weight:bold;
-  }
-  #hud .spacer { flex:1; }
-  .pill { background:linear-gradient(180deg,#fffaf0,#f6e9cd); border:2px solid #8a5f27; border-radius:999px; padding:2px 12px; white-space:nowrap; box-shadow:0 2px 0 rgba(0,0,0,.25), inset 0 1px 0 #fff; }
-  #charcoalVal { color:#5a4632; } #scoreVal { color:#a8321f; } #coinsVal { color:#8a6d00; }
-  .iconbtn {
-    background:linear-gradient(180deg,#fffaf0,#f6e9cd); color:#2b1c10; border:2px solid #8a5f27; border-radius:10px;
-    font-size:clamp(13px, 2.4vw, 17px); padding:3px 11px; cursor:pointer; line-height:1.25; font-weight:bold;
-    box-shadow:0 2px 0 rgba(0,0,0,.22), inset 0 1px 0 #fff;
-  }
-  .iconbtn:active { transform:translateY(1px); }
-  #cardbar { width:var(--uW, min(97vw, 1000px)); display:flex; gap:7px; flex-wrap:wrap; justify-content:center; }
-  .card {
-    flex:1 1 120px; max-width:158px; background:linear-gradient(180deg,#fffaf0,#f8ecd2); border:2px solid #8a5f27; border-radius:12px;
-    padding:7px 8px; text-align:left; cursor:pointer; color:#2b1c10; font:inherit;
-    display:flex; flex-direction:column; gap:1px; position:relative;
-    box-shadow:0 2px 0 rgba(0,0,0,.22), inset 0 1px 0 #fff;
-  }
-  .card:hover { border-color:#d9534a; }
-  .card.sel { border-color:#d9534a; box-shadow:0 0 0 3px rgba(217,83,74,.5); }
-  .card.cant { opacity:.62; }
-  .card .cicon { font-size:21px; }
-  .card .cname { font-weight:bold; font-size:13.5px; line-height:1.15; }
-  .card .ccost { color:#8a6d00; font-weight:bold; font-size:13px; }
-  .card .ccost.cant, .card.cant .ccost { color:#c0392b; }
-  .card .cdesc { font-size:11px; line-height:1.25; opacity:.85; }
-  .card .ccd { font-size:11px; color:#a8321f; font-weight:bold; min-height:13px; }
-  .card.tut-glow { border-color:#ffb020; animation:tutPulse .9s ease-in-out infinite; }
-  @keyframes tutPulse {
-    0%, 100% { box-shadow:0 0 0 0 rgba(255,176,32,0); }
-    50% { box-shadow:0 0 20px 6px rgba(255,176,32,.65); }
-  }
-  #waveBar {
-    width:var(--uW, min(97vw, 1000px)); display:flex; align-items:center; gap:10px;
-    font-size:clamp(12px, 2.4vw, 16px); color:#fdf6e3; font-weight:bold; text-shadow:0 1px 2px rgba(0,0,0,.5);
-  }
-  #waveBar .spacer { flex:1; }
-  #nextWaveBtn {
-    background:linear-gradient(180deg,#ffdf6b,#ffc93d); color:#4a2c00; border:none; border-radius:999px; font:inherit; font-weight:bold;
-    padding:5px 18px; cursor:pointer; box-shadow:0 3px 0 #b97e1e, inset 0 1px 0 rgba(255,255,255,.7);
-  }
-  #nextWaveBtn:active { transform:translateY(2px); box-shadow:0 1px 0 #b97e1e; }
-  #stage { position:relative; width:var(--uW, min(97vw, 1000px)); }
-  canvas {
-    display:block; width:100%; aspect-ratio: 1000 / 560; background:#4d7c43;
-    border:3px solid #8a5f27; border-radius:12px; touch-action:none;
-    box-shadow:0 12px 32px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.08);
-  }
-  .overlay {
-    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-    text-align:center; background:rgba(30,20,8,.88); color:#fdf6e3; border-radius:12px; padding:16px; gap:10px; overflow-y:auto;
-  }
-  /* Safe centering for overlays: the auto margins center content when
-     it fits and collapse to 0 when it overflows, so the TOP of tall
-     content (menu cover + title on landscape phones) stays reachable
-     by scrolling inside the overlay. Plain justify-content:center
-     pushes overflowing tops above the scroll origin — unreachable. */
-  .overlay > :first-child { margin-top:auto; }
-  .overlay > :last-child { margin-bottom:auto; }
-  .overlay h1 {
-    font-size:clamp(34px, 7.6vw, 58px); letter-spacing:2px; color:#ffe9a8;
-    text-shadow:0 0 22px rgba(255,140,40,.6), 0 3px 0 #7a2c10, 0 8px 24px rgba(0,0,0,.8);
-    font-family: Georgia, "Times New Roman", serif;
-  }
-  .overlay h2 { font-size:clamp(21px, 4.6vw, 32px); color:#ffd76a; font-family: Georgia, serif; }
-  .overlay h3 { font-size:clamp(16px, 3vw, 21px); color:#ffd76a; margin-top:8px; }
-  .overlay p { max-width:620px; line-height:1.45; font-size:clamp(13px, 2.7vw, 17px); }
-  .overlay .small { font-size:clamp(12px, 2.4vw, 15px); opacity:.88; }
-  .coverart { width:min(90%, 540px); border-radius:10px; border:2px solid #8a5f27; box-shadow:0 10px 34px rgba(0,0,0,.65); }
-  button.cta {
-    font:inherit; font-weight:bold; font-size:clamp(16px, 3.4vw, 22px);
-    background:linear-gradient(180deg,#ffdf6b,#ffc93d); color:#4a2c00; border:none; border-radius:999px;
-    padding:12px 34px; cursor:pointer; box-shadow:0 4px 0 #b97e1e, inset 0 1px 0 rgba(255,255,255,.7);
-  }
-  button.cta:active { transform:translateY(2px); box-shadow:0 2px 0 #b97e1e; }
-  button.ghost {
-    font:inherit; font-weight:bold; font-size:clamp(14px, 2.8vw, 18px);
-    background:transparent; color:#ffe9a8; border:2px solid #c9a44e; border-radius:999px;
-    padding:9px 24px; cursor:pointer;
-  }
-  .btnrow { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-  .hidden { display:none !important; }
-  kbd { background:#4a3520; border-radius:4px; padding:1px 7px; border-bottom:2px solid #241708; font-family:inherit; }
-  .upglist { display:flex; flex-direction:column; gap:9px; width:min(94%, 640px); }
-  .upg {
-    display:flex; align-items:center; gap:10px; background:linear-gradient(180deg,#fffaf0,#f8ecd2); border:2px solid #8a5f27;
-    border-radius:12px; padding:9px 12px; text-align:left; color:#2b1c10;
-    box-shadow:0 2px 0 rgba(0,0,0,.22), inset 0 1px 0 #fff;
-  }
-  .upg .info { flex:1; }
-  .upg .uname { font-weight:bold; }
-  .upg .udesc { font-size:12.5px; opacity:.88; line-height:1.35; }
-  .upg .pips { color:#d9534a; letter-spacing:2px; font-size:13px; }
-  .upg button {
-    font:inherit; font-weight:bold; background:linear-gradient(180deg,#ffdf6b,#ffc93d); color:#4a2c00; border:none; border-radius:999px;
-    padding:8px 16px; cursor:pointer; white-space:nowrap; box-shadow:0 2px 0 #b97e1e;
-  }
-  .upg button:disabled { opacity:.45; cursor:default; }
-  #toast {
-    position:absolute; left:50%; top:74px; transform:translateX(-50%);
-    background:rgba(30,20,8,.94); border:2px solid #ffd76a; color:#ffe9a8; font-weight:bold;
-    border-radius:999px; padding:7px 20px; font-size:clamp(13px, 2.6vw, 17px); pointer-events:none;
-    opacity:0; transition:opacity .25s; max-width:92%; text-align:center; z-index:5;
-  }
-  #toast.show { opacity:1; }
-  #banner {
-    position:absolute; left:0; right:0; top:36%; text-align:center; pointer-events:none;
-    font-family:Georgia, serif; font-size:clamp(30px, 6.4vw, 52px); font-weight:bold; color:#fff3d6;
-    text-shadow:0 0 26px rgba(255,140,40,.8), 0 4px 0 #7a2c10, 0 8px 30px rgba(0,0,0,.9);
-    opacity:0; transition:opacity .3s; z-index:4;
-  }
-  #banner .sub { font-size:clamp(15px, 3vw, 24px); color:#ffd76a; }
-  #banner.show { opacity:1; }
-  /* guided tutorial prompt — floats over the field, never blocks play
-     (pointer-events off except the 42px skip button) */
-  #tutBar {
-    position:absolute; left:50%; top:10px; transform:translateX(-50%); z-index:6;
-    display:flex; align-items:center; gap:8px; max-width:94%;
-    background:rgba(30,20,8,.95); border:2px solid #ffd76a; border-radius:999px;
-    padding:6px 8px 6px 20px; color:#ffe9a8; font-weight:bold;
-    font-size:clamp(14px, 2.8vw, 19px); pointer-events:none;
-    box-shadow:0 6px 22px rgba(0,0,0,.5);
-  }
-  #tutText { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  #tutX {
-    pointer-events:auto; flex:none; width:42px; height:42px; border-radius:50%;
-    border:2px solid #c9a44e; background:#4a3520; color:#ffe9a8;
-    font-size:19px; font-weight:bold; cursor:pointer; line-height:1;
-  }
-  #tutX:active { transform:translateY(1px); }
-  .howlist { display:flex; flex-direction:column; gap:8px; text-align:left; }
-  .howlist p { font-size:clamp(14px, 2.8vw, 18px); }
-  #adVeil {
-    position:absolute; inset:0; z-index:9; background:rgba(10,6,2,.92); border-radius:12px;
-    display:flex; align-items:center; justify-content:center; color:#ffe9a8;
-    font-size:clamp(16px, 3.4vw, 22px); font-weight:bold;
-  }
-  /* ---- responsive fit (phones): #wrap is pinned to the visible
-     viewport by pinWrap() in game.js (visualViewport size + offset)
-     and the column is height-fitted via --uW; below is the compact
-     chrome layout that keeps HUD + defender bar short enough for
-     small screens ---- */
-  button { touch-action:manipulation; }
-  #rotateHint {
-    background:rgba(30,20,8,.92); border:2px solid #ffd76a; color:#ffe9a8; font-weight:bold;
-    border-radius:999px; padding:6px 18px; font-size:14px; pointer-events:none; text-align:center;
-  }
-  @media (max-width: 700px), (max-height: 520px) {
-    #wrap { gap:4px; padding:6px; }
-    #hud { font-size:12px; gap:5px; }
-    .pill { padding:2px 9px; }
-    .iconbtn { min-height:40px; padding:6px 12px; font-size:14px; }
-    #cardbar {
-      flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden;
-      justify-content:flex-start; padding-bottom:4px; scrollbar-width:thin;
-    }
-    /* Compact card: one short row block — icon + NAME on the first
-       line, price (+ cooldown) on the second. The name is NEVER
-       hidden or clipped: players must see what they're picking.
-       Only the flavor description drops out at this size. */
-    .card {
-      flex:0 0 auto; width:138px; min-height:46px; padding:5px 8px;
-      flex-direction:row; flex-wrap:wrap; align-items:center; column-gap:6px; row-gap:0;
-    }
-    .card .cicon { font-size:18px; line-height:1; }
-    .card .cdesc { display:none; }
-    .card .cname { font-size:12px; flex:1 1 64px; }
-    .card .ccost { font-size:12px; }
-    .card .ccd { min-height:0; font-size:10px; }
-    #waveBar { font-size:12px; gap:6px; }
-    #nextWaveBtn { min-height:40px; padding:6px 14px; }
-    .overlay { padding:10px; gap:8px; }
-    .overlay .coverart { width:min(62%, 340px); }
-    .overlay h1 { font-size:clamp(26px, 5.2vw, 40px); }
-    button.cta { padding:10px 26px; }
-    button.ghost { padding:8px 20px; }
-  }
-</style>
-</head>
-<body>
-<div id="wrap">
-  <div id="hud">
-    <span class="pill" id="charcoalVal">🪨 150</span>
-    <span class="pill" id="scoreVal">🏆 0</span>
-    <span class="pill" id="waveVal">🌊 Wave 1</span>
-    <span class="pill" id="coinsVal">🪙 0</span>
-    <span class="spacer"></span>
-    <button class="iconbtn" id="shopBtn" title="Cookout shop">🛒 Shop</button>
-    <button class="iconbtn" id="pauseBtn" title="Pause (P)">⏸</button>
-    <button class="iconbtn" id="muteBtn" title="Mute (M)">🔊</button>
-  </div>
-  <div id="cardbar" role="toolbar" aria-label="Defenders"></div>
-  <div id="waveBar">
-    <span id="phaseLbl">The ants are coming for the feast…</span>
-    <span class="spacer"></span>
-    <button id="nextWaveBtn" class="hidden">Send next wave ⚑ +25</button>
-  </div>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1.0">
+		<title>ANT VS BARBECUE</title>
+		<style>
+html, body, #canvas {
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
 
-  <div id="stage">
-    <canvas id="game" width="1000" height="560"></canvas>
-    <div id="banner"></div>
-    <div id="toast"></div>
-    <div id="tutBar" class="hidden"><span id="tutText"></span><button id="tutX" title="Skip tutorial" aria-label="Skip tutorial">✕</button></div>
-    <div id="adVeil" class="hidden">📺 Ad break — the cookout resumes in a sec…</div>
+body {
+	color: white;
+	background-color: black;
+	overflow: hidden;
+	touch-action: none;
+}
 
-    <!-- MAIN MENU -->
-    <div class="overlay" id="menu">
-      <img class="coverart" id="menuCover" src="cover.png" alt="Ant vs Barbecue — a giant ant in sunglasses raids a backyard barbecue picnic blanket defended by a grill and a fly swatter">
-      <h1>ANT VS BARBECUE</h1>
-      <p>The whole colony is coming for your feast — and the <b>Crumb Thieves</b> aren't even
-         subtle about it. Hold the blanket with grills, swatters, hoses and citronella,
-         fry the gate-crashers, and chase a score that never has to end.</p>
-      <div class="btnrow">
-        <button class="cta" id="playBtn">🔥 Start the Cookout</button>
-        <button class="ghost" id="shopBtnMenu">🛒 Shop</button>
-        <button class="ghost" id="howBtn">❓ How to Play</button>
-      </div>
-      <p class="small" id="menuStats"></p>
-      <p class="small">Pick a defender card, then tap the blanket · <kbd>1–5</kbd> quick-pick · <kbd>P</kbd> pause · <kbd>M</kbd> mute</p>
-    </div>
+#canvas {
+	display: block;
+}
 
-    <!-- HOW TO PLAY -->
-    <div class="overlay hidden" id="howto">
-      <h2>❓ How to Play</h2>
-      <div class="howlist">
-        <p>👆 Pick a <b>defender card</b>, tap the blanket to place it.</p>
-        <p>🪨 <b>Charcoal</b> is money — it trickles in, falls from the sky (tap the lumps!), and Candles cook more.</p>
-        <p>🔥 <b>Grills</b> lob fireballs · 🏸 <b>Swatters</b> smash up close · 💦 <b>Hoses</b> slow the march · 🧺 <b>Baskets</b> block.</p>
-        <p>⚡ First ant through a lane eats the <b>bug zapper</b> — the whole lane fries. A second one raids the feast. Game over.</p>
-        <p>🍪 <b>Crumb Thieves</b> steal score and sprint home. Pop them on the run back to win the crumb back.</p>
-        <p>👑 Every 10th wave, the <b>Queen</b> herself shows up. Waves never stop. Neither should you.</p>
-      </div>
-      <button class="cta" id="howClose">Got it!</button>
-    </div>
+#canvas:focus {
+	outline: none;
+}
 
-    <!-- SHOP -->
-    <div class="overlay hidden" id="shop">
-      <h2>🛒 Cookout Shop</h2>
-      <p class="small">Coins are forever — upgrades, chefs and blankets stick between cookouts. Balance: <b id="shopCoins">🪙 0</b></p>
-      <div class="upglist" id="shopList"></div>
-      <button class="ghost" id="shopClose">Back</button>
-    </div>
+#status, #status-splash, #status-progress {
+	position: absolute;
+	left: 0;
+	right: 0;
+}
 
-    <!-- PAUSE -->
-    <div class="overlay hidden" id="pauseOv">
-      <h2>⏸ Paused</h2>
-      <p>The ants wait for no one. Except now, apparently.</p>
-      <div class="btnrow">
-        <button class="cta" id="resumeBtn">▶ Back to the Blanket</button>
-        <button class="ghost" id="quitBtn">Quit to Menu</button>
-      </div>
-    </div>
+#status, #status-splash {
+	top: 0;
+	bottom: 0;
+}
 
-    <!-- GAME OVER -->
-    <div class="overlay hidden" id="overOv">
-      <h2>😱 The Feast Is Raided!</h2>
-      <p id="overStats"></p>
-      <div class="btnrow">
-        <button class="cta" id="againBtn">🔥 Run It Back</button>
-        <button class="ghost" id="overMenuBtn">Menu</button>
-      </div>
-    </div>
-  </div>
-  <div id="rotateHint" class="hidden">↻ Rotate your phone for a bigger view</div>
-</div>
-<script src="game.js"></script>
-</body>
+#status {
+	background-color: #242424;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	visibility: hidden;
+}
+
+#status-splash {
+	max-height: 100%;
+	max-width: 100%;
+	margin: auto;
+}
+
+#status-progress, #status-notice {
+	display: none;
+}
+
+#status-progress {
+	bottom: 10%;
+	width: 50%;
+	margin: 0 auto;
+}
+
+#status-notice {
+	background-color: #5b3943;
+	border-radius: 0.5rem;
+	border: 1px solid #9b3943;
+	color: #e0e0e0;
+	font-family: 'Noto Sans', 'Droid Sans', Arial, sans-serif;
+	line-height: 1.3;
+	margin: 0 2rem;
+	overflow: hidden;
+	padding: 1rem;
+	text-align: center;
+	z-index: 1;
+}
+		</style>
+		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
+<link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script><script>window.__cg={ready:false,env:'',adState:'idle',init:function(){try{if(window.CrazyGames&&window.CrazyGames.SDK){window.CrazyGames.SDK.init().then(function(){window.__cg.ready=true;window.__cg.env=window.CrazyGames.SDK.environment;}).catch(function(){window.__cg.ready=false;});}}catch(e){window.__cg.ready=false;}},muted:function(){try{return !!(window.__cg.ready&&window.CrazyGames.SDK.game.settings&&window.CrazyGames.SDK.game.settings.muteAudio);}catch(e){return false;}},call:function(m){try{if(window.__cg.ready&&window.CrazyGames.SDK.game[m])window.CrazyGames.SDK.game[m]();}catch(e){}},ad:function(){try{if(!window.__cg.ready||!window.CrazyGames.SDK.ad){window.__cg.adState='done';return;}window.__cg.adState='showing';window.CrazyGames.SDK.ad.requestAd('midgame',{adStarted:function(){},adFinished:function(){window.__cg.adState='done';},adError:function(){window.__cg.adState='done';}});}catch(e){window.__cg.adState='done';}}};window.__cg.init();</script>
+	</head>
+	<body>
+		<canvas id="canvas">
+			Your browser does not support the canvas tag.
+		</canvas>
+
+		<noscript>
+			Your browser does not support JavaScript.
+		</noscript>
+
+		<div id="status">
+			<img id="status-splash" src="index.png" alt="">
+			<progress id="status-progress"></progress>
+			<div id="status-notice"></div>
+		</div>
+
+		<script src="index.js"></script>
+		<script>
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":9601984,"index.wasm":35376909},"focusCanvas":true,"gdextensionLibs":[]};
+const GODOT_THREADS_ENABLED = false;
+const engine = new Engine(GODOT_CONFIG);
+
+(function () {
+	const statusOverlay = document.getElementById('status');
+	const statusProgress = document.getElementById('status-progress');
+	const statusNotice = document.getElementById('status-notice');
+
+	let initializing = true;
+	let statusMode = '';
+
+	function setStatusMode(mode) {
+		if (statusMode === mode || !initializing) {
+			return;
+		}
+		if (mode === 'hidden') {
+			statusOverlay.remove();
+			initializing = false;
+			return;
+		}
+		statusOverlay.style.visibility = 'visible';
+		statusProgress.style.display = mode === 'progress' ? 'block' : 'none';
+		statusNotice.style.display = mode === 'notice' ? 'block' : 'none';
+		statusMode = mode;
+	}
+
+	function setStatusNotice(text) {
+		while (statusNotice.lastChild) {
+			statusNotice.removeChild(statusNotice.lastChild);
+		}
+		const lines = text.split('\n');
+		lines.forEach((line) => {
+			statusNotice.appendChild(document.createTextNode(line));
+			statusNotice.appendChild(document.createElement('br'));
+		});
+	}
+
+	function displayFailureNotice(err) {
+		console.error(err);
+		if (err instanceof Error) {
+			setStatusNotice(err.message);
+		} else if (typeof err === 'string') {
+			setStatusNotice(err);
+		} else {
+			setStatusNotice('An unknown error occured');
+		}
+		setStatusMode('notice');
+		initializing = false;
+	}
+
+	const missing = Engine.getMissingFeatures({
+		threads: GODOT_THREADS_ENABLED,
+	});
+
+	if (missing.length !== 0) {
+		if (GODOT_CONFIG['serviceWorker'] && GODOT_CONFIG['ensureCrossOriginIsolationHeaders'] && 'serviceWorker' in navigator) {
+			// There's a chance that installing the service worker would fix the issue
+			Promise.race([
+				navigator.serviceWorker.getRegistration().then((registration) => {
+					if (registration != null) {
+						return Promise.reject(new Error('Service worker already exists.'));
+					}
+					return registration;
+				}).then(() => engine.installServiceWorker()),
+				// For some reason, `getRegistration()` can stall
+				new Promise((resolve) => {
+					setTimeout(() => resolve(), 2000);
+				}),
+			]).catch((err) => {
+				console.error('Error while registering service worker:', err);
+			}).then(() => {
+				window.location.reload();
+			});
+		} else {
+			// Display the message as usual
+			const missingMsg = 'Error\nThe following features required to run Godot projects on the Web are missing:\n';
+			displayFailureNotice(missingMsg + missing.join('\n'));
+		}
+	} else {
+		setStatusMode('progress');
+		engine.startGame({
+			'onProgress': function (current, total) {
+				if (current > 0 && total > 0) {
+					statusProgress.value = current;
+					statusProgress.max = total;
+				} else {
+					statusProgress.removeAttribute('value');
+					statusProgress.removeAttribute('max');
+				}
+			},
+		}).then(() => {
+			setStatusMode('hidden');
+		}, displayFailureNotice);
+	}
+}());
+		</script>
+	</body>
 </html>
+
