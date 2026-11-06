@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TipPool — Tip Pool Split, Tip-Out &amp; Shift Earnings Calculators for Restaurant &amp; Bar Staff</title>
+  <meta name="description" content="Free practical calculators for servers, bartenders, barbacks, bussers and managers: split a tip pool fairly, calculate tip-out, track cash vs card tips after fees, and estimate shift earnings.">
+  <meta name="theme-color" content="#5c1f2a">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "TipPool",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Any",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+    "description": "Tip pool split, tip-out, cash vs card tip tracking, and shift earnings calculators that run entirely in the browser."
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="TipPool home">
+      <img src="assets/favicon.svg" alt="" width="42" height="42">
+      <span>Tip<strong>Pool</strong></span>
+    </a>
+    <nav aria-label="Calculator navigation">
+      <a href="#pool">Pool Split</a>
+      <a href="#tipout">Tip-Out</a>
+      <a href="#tracker">Cash vs Card</a>
+      <a href="#earnings">Shift Earnings</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">RESTAURANT &amp; BAR STAFF TOOLKIT</p>
+        <h1>Split the pool.<br>Keep it fair.</h1>
+        <p class="lede">TipPool turns a messy end-of-night tip pool, tip-out sheet, and card-fee math into clear numbers everyone on the shift can check — before anyone clocks out.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#pool">Split a tip pool</a>
+          <a class="button secondary" href="#method">How pooling works</a>
+        </div>
+        <ul class="hero-points" aria-label="Product highlights">
+          <li>No account</li>
+          <li>No subscription</li>
+          <li>Runs in your browser</li>
+          <li>Printable shift sheet</li>
+        </ul>
+      </div>
+      <aside class="hero-card" aria-label="Example result">
+        <p class="card-label">LIVE SPLIT LOGIC</p>
+        <div class="hero-number"><span>Pool</span><strong>→</strong><span>Hours × Points</span><strong>→</strong><span>Share</span></div>
+        <p>Each person's share follows the hours they actually worked and the points their role carries — not a flat guess at the register.</p>
+        <div class="mini-grid">
+          <div><span>4</span><small>working tools</small></div>
+          <div><span>0</span><small>data uploaded</small></div>
+          <div><span>1</span><small>clear sheet</small></div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- TOOL 1 -->
+    <section id="pool" class="tool-section">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 01</p>
+        <h2>Tip Pool Split Calculator</h2>
+        <p>Enter the total pool for the shift, add everyone who worked it, and set hours and points. Each share is pool × (hours × points) ÷ total (hours × points) across the team.</p>
+      </div>
+      <div class="split-layout">
+        <form id="poolForm" class="panel form-panel">
+          <fieldset>
+            <legend>Tip pool</legend>
+            <div class="grid two">
+              <label>Total tip pool ($)<input id="poolTotal" type="number" min="0" step="0.01" value="300"></label>
+              <label>Shift label<input id="poolLabel" type="text" value="Friday dinner"></label>
+            </div>
+            <p class="hint">Points are weights. A common setup: server or bartender = 1.0, barback = 0.6, busser = 0.5 — adjust to your house rules.</p>
+          </fieldset>
+          <fieldset>
+            <legend>Staff on shift</legend>
+            <div class="row-head"><span>Name</span><span>Hours</span><span>Points</span><span>Share</span><span></span></div>
+            <div id="poolRows" class="dynamic-rows"></div>
+            <button class="button small ghost" type="button" id="addPoolRow">+ Add staff member</button>
+          </fieldset>
+        </form>
+        <aside class="panel results-panel" aria-live="polite">
+          <p class="card-label">POOL RESULT</p>
+          <div class="total-box"><span>Total pool</span><strong id="poolTotalOut">$0.00</strong><small id="poolNote">Weighted by hours × points</small></div>
+          <dl class="result-list">
+            <div><dt>Total weighted units</dt><dd id="poolUnits">0</dd></div>
+            <div><dt>Value per unit</dt><dd id="poolPerUnit">$0.00</dd></div>
+            <div><dt>Staff count</dt><dd id="poolCount">0</dd></div>
+            <div class="profit"><dt>Allocated</dt><dd id="poolAllocated">$0.00</dd></div>
+            <div><dt>Unallocated (rounding)</dt><dd id="poolRemainder">$0.00</dd></div>
+          </dl>
+          <div id="poolBreakdown" class="breakdown"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TOOL 2 -->
+    <section id="tipout" class="tool-section alt-bg">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 02</p>
+        <h2>Tip-Out Calculator</h2>
+        <p>Some houses tip out on total tips, others on total sales. Pick your base, enter the amount, and see exactly what each role gets — and what you keep.</p>
+      </div>
+      <div class="split-layout">
+        <form id="tipoutForm" class="panel form-panel">
+          <fieldset>
+            <legend>Tip-out base</legend>
+            <div class="grid two">
+              <label>Calculate tip-out on
+                <select id="tipoutBaseType"><option value="tips">Total tips</option><option value="sales">Total sales</option></select>
+              </label>
+              <label>Base amount ($)<input id="tipoutBaseAmount" type="number" min="0" step="0.01" value="250"></label>
+            </div>
+            <p class="hint">Example: 20% of $250 in tips is $50 total tipped out across all roles below, split by each role's own percentage.</p>
+          </fieldset>
+          <fieldset>
+            <legend>Tip-out rules</legend>
+            <div class="row-head tipout-head"><span>Role</span><span>% of base</span><span>Owed</span><span></span></div>
+            <div id="tipoutRows" class="dynamic-rows"></div>
+            <button class="button small ghost" type="button" id="addTipoutRow">+ Add role</button>
+          </fieldset>
+        </form>
+        <aside class="panel results-panel" aria-live="polite">
+          <p class="card-label">TIP-OUT RESULT</p>
+          <div class="total-box"><span>You keep</span><strong id="tipoutKeep">$0.00</strong><small>Base tips minus total tip-out when base is tips; see note when base is sales</small></div>
+          <dl class="result-list">
+            <div><dt>Total tip-out</dt><dd id="tipoutTotal">$0.00</dd></div>
+            <div><dt>Combined tip-out rate</dt><dd id="tipoutRate">0%</dd></div>
+            <div><dt>Base amount</dt><dd id="tipoutBaseOut">$0.00</dd></div>
+          </dl>
+          <div id="tipoutBreakdown" class="breakdown"></div>
+          <p id="tipoutNote" class="hint light"></p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TOOL 3 -->
+    <section id="tracker" class="tool-section">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 03</p>
+        <h2>Cash-vs-Card Tip Tracker</h2>
+        <p>Track a week of shifts in one sheet. Card tips are reduced by your card processing fee so the take-home column shows what you actually keep. Print it clean at the end of the week.</p>
+      </div>
+      <form id="trackerForm" class="panel form-panel wide-panel">
+        <fieldset>
+          <legend>Fee &amp; shifts</legend>
+          <div class="grid three">
+            <label>Card processing fee (%)<input id="feePct" type="number" min="0" step="0.01" value="3"></label>
+            <label>Week / period label<input id="trackerLabel" type="text" value="Week of Nov 2"></label>
+            <label>&nbsp;<span class="hint">Card net = card tips × (1 − fee%). $100 at 3% = $97.00 net.</span></label>
+          </div>
+          <div class="row-head tracker-head"><span>Shift / date</span><span>Cash tips ($)</span><span>Card tips ($)</span><span>Net take-home</span><span></span></div>
+          <div id="trackerRows" class="dynamic-rows"></div>
+          <button class="button small ghost" type="button" id="addTrackerRow">+ Add shift</button>
+        </fieldset>
+        <div class="tracker-totals" aria-live="polite">
+          <div><span>Total cash</span><strong id="trackCash">$0.00</strong></div>
+          <div><span>Gross card</span><strong id="trackCardGross">$0.00</strong></div>
+          <div><span>Fees lost</span><strong id="trackFees">$0.00</strong></div>
+          <div class="highlight"><span>Total take-home tips</span><strong id="trackTakeHome">$0.00</strong></div>
+        </div>
+        <div class="result-actions inline">
+          <button class="button primary" type="button" id="printSheetBtn">Print shift sheet</button>
+          <button class="button secondary dark" type="button" id="copyTracker">Copy totals</button>
+        </div>
+        <p id="copyTrackerStatus" class="copy-status dark-status" role="status"></p>
+      </form>
+    </section>
+
+    <!-- TOOL 4 -->
+    <section id="earnings" class="tool-section alt-bg">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 04</p>
+        <h2>Shift Earnings Estimator</h2>
+        <p>See what a shift is really worth: wages plus tips after tip-out, your true effective hourly rate, and what that pace means for the week.</p>
+      </div>
+      <div class="tools-grid single">
+        <article class="panel tool-card">
+          <form id="earningsForm" class="stack-form">
+            <label>Hourly wage ($)<input id="earnWage" type="number" min="0" step="0.01" value="7.25"></label>
+            <label>Hours per shift<input id="earnHours" type="number" min="0" step="0.25" value="6"></label>
+            <label>Tips in ($)<input id="earnTips" type="number" min="0" step="0.01" value="180"></label>
+            <label>Tip-out mode
+              <select id="earnTipoutMode"><option value="pct">Tip-out as % of tips</option><option value="flat">Tip-out as flat $</option></select>
+            </label>
+            <label>Tip-out value (% or $)<input id="earnTipoutValue" type="number" min="0" step="0.01" value="15"></label>
+            <label>Shifts per week<input id="earnShifts" type="number" min="0" step="1" value="4"></label>
+          </form>
+          <div class="callout-result">
+            <span>Total per shift</span><strong id="earnTotal">$0.00</strong><small id="earnNote"></small>
+          </div>
+          <dl class="mini-results">
+            <div><dt>Gross wages</dt><dd id="earnGrossWages">$0.00</dd></div>
+            <div><dt>Tip-out</dt><dd id="earnTipoutOut">$0.00</dd></div>
+            <div><dt>Net tips</dt><dd id="earnNetTips">$0.00</dd></div>
+            <div><dt>Effective hourly rate</dt><dd id="earnEffective">$0.00/hr</dd></div>
+            <div><dt>Weekly estimate</dt><dd id="earnWeekly">$0.00</dd></div>
+          </dl>
+        </article>
+        <article class="panel tool-card explain">
+          <h3>How to read this</h3>
+          <p><strong>Effective hourly rate</strong> is total per shift ÷ hours. It is the number to compare when you are choosing between a higher-wage slow room and a lower-wage busy one.</p>
+          <p><strong>Worked check:</strong> $7.25 × 6 hours = $43.50 wages. $180 tips minus 15% tip-out ($27) leaves $153 net tips. Total $196.50, which is $32.75 per hour effective.</p>
+          <p>Estimates only — taxes, tip reporting, pooled-house rules, and local wage law all affect your actual pay. Confirm your house policy and pay stub.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="method" class="method-section">
+      <div>
+        <p class="eyebrow">THE METHOD</p>
+        <h2>Fair pooling is arithmetic, not arguments</h2>
+        <p>A pool split by hours alone punishes the closer who worked the rush. A split by points alone ignores who was actually there. Hours × points does both jobs at once, and writing it down ends most end-of-night disputes.</p>
+      </div>
+      <ol class="method-steps">
+        <li><strong>Agree the pool total first.</strong> Cash plus card tips for the shift, counted by two people where the house requires it.</li>
+        <li><strong>Agree points by role.</strong> Set them before the shift, not after the money is counted.</li>
+        <li><strong>Multiply hours × points.</strong> That is each person's weighted units for the night.</li>
+        <li><strong>Divide proportionally.</strong> Every share is the pool times that person's units divided by the team total.</li>
+      </ol>
+    </section>
+
+    <section class="faq-section">
+      <p class="eyebrow">QUESTIONS</p>
+      <h2>Built for servers, bartenders, and the managers who close with them</h2>
+      <div class="faq-grid">
+        <article><h3>Does TipPool store my numbers?</h3><p>No. Calculations happen locally in this page. The current version has no account, database, analytics, or server-side form submission.</p></article>
+        <article><h3>Is this payroll or tax advice?</h3><p>No. TipPool is an estimating and record-keeping aid. Tip reporting, pooling legality, and wage rules vary — follow your employer's policy and applicable law.</p></article>
+        <article><h3>How could this site earn revenue?</h3><p>Natural paths include display advertising after traffic is established, affiliate links to scheduling / POS / tip-distribution software, a premium printable pack, or white-label licensing to restaurant groups.</p></article>
+        <article><h3>What should be added next?</h3><p>Likely expansions are a tip declaration log, section / station sales tracker, auto-gratuity calculator, and saved house-rule presets per venue.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>TipPool</strong> — practical tip calculators for restaurant and bar teams.</p>
+    <p class="fineprint">Estimates only. Verify house pooling rules, tip-out policy, and local wage and tip-reporting requirements before relying on a sheet.</p>
+  </footer>
+
+  <section id="printSheet" class="print-sheet" aria-hidden="true">
+    <h1 id="printTitle">Tip Tracker — Shift Sheet</h1>
+    <p id="printMeta"></p>
+    <table><thead><tr><th>Shift</th><th>Cash</th><th>Card (gross)</th><th>Fee</th><th>Net take-home</th></tr></thead><tbody id="printRows"></tbody></table>
+    <p class="print-total">Total take-home tips: <strong id="printTotal"></strong></p>
+    <p>This sheet is a personal record aid, not a payroll document. Confirm totals against your pay stub and house reports.</p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
