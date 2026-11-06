@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GradePoint — GPA Calculator, Final Grade &amp; Curve Tools for Teachers and Students</title>
+  <meta name="description" content="Free classroom calculators that run in your browser: GPA calculator with weighted honors and AP credit, grade needed on the final, percent-to-letter converter with a custom scale, and a class average and curve visualizer.">
+  <meta name="theme-color" content="#0b2440">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "GradePoint",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Any",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+    "description": "GPA, final-grade, letter-grade conversion, and class curve calculators that run entirely in the browser."
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="GradePoint home">
+      <img src="assets/favicon.svg" alt="" width="42" height="42">
+      <span>Grade<strong>Point</strong></span>
+    </a>
+    <nav aria-label="Tool navigation">
+      <a href="#gpa">GPA</a>
+      <a href="#final">Final Grade</a>
+      <a href="#converter">Letter Converter</a>
+      <a href="#curve">Class &amp; Curve</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">TEACHER &amp; STUDENT TOOLKIT</p>
+        <h1>Know the grade.<br>Before it posts.</h1>
+        <p class="lede">GradePoint answers the four questions every classroom asks — what is my GPA, what do I need on the final, what letter is this score, and what does this class actually look like after a fair curve?</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#gpa">Calculate your GPA</a>
+          <a class="button secondary" href="#method">How the math works</a>
+        </div>
+        <ul class="hero-points" aria-label="Product highlights">
+          <li>No account</li>
+          <li>No subscription</li>
+          <li>Runs in your browser</li>
+          <li>Printable GPA summary</li>
+        </ul>
+      </div>
+      <aside class="hero-card" aria-label="Example result">
+        <p class="card-label">LIVE GRADE LOGIC</p>
+        <div class="hero-number"><span>Scores</span><strong>→</strong><span>Letters</span><strong>→</strong><span>GPA</span></div>
+        <p>Weighted and unweighted GPA are shown side by side, the final-exam math is spelled out step by step, and every curve is previewed before anyone commits to it.</p>
+        <div class="mini-grid">
+          <div><span>4</span><small>working tools</small></div>
+          <div><span>0</span><small>data uploaded</small></div>
+          <div><span>1</span><small>clear answer</small></div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- TOOL 1: GPA -->
+    <section id="gpa" class="tool-section">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 01</p>
+        <h2>GPA Calculator</h2>
+        <p>Add a row for every course. Pick the letter grade, credits, and course level — unweighted and weighted GPA update as you type. Honors courses earn +0.5 and AP courses earn +1.0 on the weighted scale.</p>
+      </div>
+      <div class="split-layout">
+        <form id="gpaForm" class="panel form-panel">
+          <fieldset>
+            <legend>Your courses</legend>
+            <div id="courseRows" class="dynamic-rows"></div>
+            <button class="button small ghost" type="button" id="addCourse">+ Add course</button>
+            <p class="hint">Standard 4.0 scale: A = 4.0, A− = 3.7, B+ = 3.3, B = 3.0, B− = 2.7, C+ = 2.3, C = 2.0, C− = 1.7, D+ = 1.3, D = 1.0, F = 0. A failing grade earns no honors or AP boost. Weighted points are capped at 5.0 per course.</p>
+          </fieldset>
+        </form>
+        <aside class="panel results-panel" aria-live="polite">
+          <p class="card-label">YOUR GPA</p>
+          <div class="total-box">
+            <span>Unweighted GPA</span>
+            <strong id="gpaUnweighted">0.00</strong>
+            <small>4.0 scale · all courses count the same way</small>
+          </div>
+          <div class="total-box accent-box">
+            <span>Weighted GPA</span>
+            <strong id="gpaWeighted">0.00</strong>
+            <small>Honors +0.5 · AP +1.0</small>
+          </div>
+          <dl class="result-list">
+            <div><dt>Total credits</dt><dd id="gpaCredits">0</dd></div>
+            <div><dt>Courses counted</dt><dd id="gpaCourses">0</dd></div>
+            <div><dt>Quality points (unweighted)</dt><dd id="gpaPoints">0.0</dd></div>
+            <div><dt>Quality points (weighted)</dt><dd id="gpaPointsW">0.0</dd></div>
+          </dl>
+          <div class="result-actions">
+            <button class="button primary" type="button" id="printGpa">Print GPA summary</button>
+            <button class="button secondary dark" type="button" id="copyGpa">Copy summary</button>
+          </div>
+          <p id="gpaCopyStatus" class="copy-status" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TOOL 2: FINAL -->
+    <section id="final" class="tool-section alt-bg">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 02</p>
+        <h2>Grade Needed on the Final</h2>
+        <p>Enter where you stand, how much the final is worth, and the grade you want. GradePoint works out the exact score you need — and tells you plainly if the target is already locked in or out of reach.</p>
+      </div>
+      <div class="split-layout narrow">
+        <form id="finalForm" class="panel form-panel">
+          <div class="grid three">
+            <label>Current grade (%)<input id="finalCurrent" type="number" min="0" max="100" step="0.1" value="85"></label>
+            <label>Final exam weight (%)<input id="finalWeight" type="number" min="1" max="100" step="0.1" value="20"></label>
+            <label>Target grade (%)<input id="finalTarget" type="number" min="0" max="100" step="0.1" value="90"></label>
+          </div>
+          <p class="hint">Formula: needed = (target − current × (1 − weight)) ÷ weight. Your current grade covers the rest of the course; only the final-exam share is still in play.</p>
+        </form>
+        <aside class="panel results-panel" aria-live="polite">
+          <p class="card-label">SCORE NEEDED ON THE FINAL</p>
+          <div class="total-box">
+            <span>You need</span>
+            <strong id="finalNeeded">—</strong>
+            <small id="finalNeededNote">on the final exam</small>
+          </div>
+          <p id="finalFlag" class="flag flag-neutral">Enter your numbers to see where you stand.</p>
+          <dl class="result-list">
+            <div><dt>Grade if you score 0</dt><dd id="finalFloor">—</dd></div>
+            <div><dt>Best possible grade</dt><dd id="finalCeiling">—</dd></div>
+            <div><dt>Grade if final matches current</dt><dd id="finalHold">—</dd></div>
+          </dl>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TOOL 3: CONVERTER -->
+    <section id="converter" class="tool-section">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 03</p>
+        <h2>Gradebook % → Letter Converter</h2>
+        <p>Set your own grading scale, then convert one score — or a whole stack of scores at once. Edit any row to match your school or syllabus; the converter follows your scale, not a fixed one.</p>
+      </div>
+      <div class="split-layout">
+        <div class="panel form-panel">
+          <form id="scaleForm">
+            <fieldset>
+              <legend>Your grading scale</legend>
+              <div id="scaleRows" class="dynamic-rows"></div>
+              <button class="button small ghost" type="button" id="addScaleRow">+ Add scale row</button>
+              <p id="scaleWarning" class="hint warn-text" role="alert"></p>
+              <p class="hint">Each letter needs a minimum percentage. Minimums must be unique numbers between 0 and 100, and the lowest row should start at 0 so every score lands somewhere.</p>
+            </fieldset>
+          </form>
+          <form id="convertForm" class="stack-form">
+            <fieldset>
+              <legend>Convert one score</legend>
+              <div class="grid two">
+                <label>Percentage (%)<input id="convPct" type="number" min="0" max="100" step="0.1" value="89.5"></label>
+                <label>Or use points — earned<input id="convEarned" type="number" min="0" step="0.5" value=""></label>
+                <label>Points possible<input id="convPossible" type="number" min="0" step="0.5" value=""></label>
+              </div>
+              <p class="hint">Fill in either the percentage, or earned ÷ possible — points take priority when both are filled in.</p>
+            </fieldset>
+          </form>
+        </div>
+        <aside class="panel results-panel" aria-live="polite">
+          <p class="card-label">LETTER GRADE</p>
+          <div class="total-box">
+            <span id="convInputEcho">89.5%</span>
+            <strong id="convLetter">B</strong>
+            <small id="convNote">on your current scale</small>
+          </div>
+          <form id="batchForm" class="batch-form">
+            <label class="batch-label">Batch convert — one score (%) per line
+              <textarea id="batchInput" rows="6">95
+89.5
+72
+61
+48</textarea>
+            </label>
+          </form>
+          <div id="batchResults" class="batch-results" aria-live="polite"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- TOOL 4: CURVE -->
+    <section id="curve" class="tool-section alt-bg">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 04</p>
+        <h2>Class Average &amp; Curve Visualizer</h2>
+        <p>Paste a class set of scores and see the real picture — average, median, spread, and letter distribution — then preview three common curves side by side before choosing one.</p>
+      </div>
+      <div class="panel form-panel curve-input-panel">
+        <form id="curveForm">
+          <label class="batch-label">Class scores — one per line, or comma-separated (0–100)
+            <textarea id="classScores" rows="7">58
+64
+67
+71
+72
+74
+76
+78
+79
+81
+82
+84
+85
+87
+88
+90
+91
+93
+95
+97</textarea>
+          </label>
+          <div class="grid three curve-controls">
+            <label>Flat curve — add points<input id="flatPoints" type="number" min="0" max="30" step="0.5" value="5"></label>
+            <label class="curve-note-label">Linear curve <span class="curve-note">Top score scales to 100 automatically</span></label>
+            <label class="curve-note-label">Square-root curve <span class="curve-note">Each score becomes 10 × √score — helps low scores most</span></label>
+          </div>
+          <p id="curveWarning" class="hint warn-text" role="alert"></p>
+        </form>
+      </div>
+
+      <div class="stats-grid" aria-live="polite">
+        <div class="panel stat-card"><span>Students</span><strong id="statCount">0</strong></div>
+        <div class="panel stat-card"><span>Mean (average)</span><strong id="statMean">—</strong></div>
+        <div class="panel stat-card"><span>Median</span><strong id="statMedian">—</strong></div>
+        <div class="panel stat-card"><span>High / Low</span><strong id="statRange">—</strong></div>
+      </div>
+
+      <div class="dist-grid">
+        <div class="panel dist-panel">
+          <h3>Original distribution</h3>
+          <div id="distOriginal" class="bars"></div>
+          <p class="dist-mean">Mean: <strong id="meanOriginal">—</strong></p>
+        </div>
+        <div class="panel dist-panel">
+          <h3>Flat curve <small id="flatLabel">(+5 pts)</small></h3>
+          <div id="distFlat" class="bars"></div>
+          <p class="dist-mean">Curved mean: <strong id="meanFlat">—</strong></p>
+        </div>
+        <div class="panel dist-panel">
+          <h3>Linear curve <small>(top → 100)</small></h3>
+          <div id="distLinear" class="bars"></div>
+          <p class="dist-mean">Curved mean: <strong id="meanLinear">—</strong></p>
+        </div>
+        <div class="panel dist-panel">
+          <h3>Square-root curve</h3>
+          <div id="distSqrt" class="bars"></div>
+          <p class="dist-mean">Curved mean: <strong id="meanSqrt">—</strong></p>
+        </div>
+      </div>
+      <p class="hint curve-footnote">Letter distribution uses the standard scale (A ≥ 90, B ≥ 80, C ≥ 70, D ≥ 60, F below 60). Curved scores are capped at 100. A curve is a teaching decision, not just a math trick — preview all three and pick the one you can explain to students and parents.</p>
+    </section>
+
+    <section id="method" class="method-section">
+      <div>
+        <p class="eyebrow">THE METHOD</p>
+        <h2>Why a weighted GPA is not just a bigger number</h2>
+        <p>An unweighted GPA treats every course the same. A weighted GPA gives extra credit for harder courses — typically +0.5 for Honors and +1.0 for AP — so a B in AP Chemistry can count like an A in a regular class. Neither number is “the real one”; colleges and schools each decide which they use, which is why GradePoint always shows both, with total credits, so nothing is hidden.</p>
+      </div>
+      <ol class="method-steps">
+        <li><strong>Start with the letter.</strong> Every letter converts to grade points on the 4.0 scale before anything else happens.</li>
+        <li><strong>Weight by credits.</strong> A 4-credit course moves the GPA four times as much as a 1-credit course — credits are the volume knob.</li>
+        <li><strong>Add rigor honestly.</strong> Honors and AP boosts apply only to passing grades, and no course can exceed 5.0 weighted points.</li>
+        <li><strong>Check the final early.</strong> The score you need on a final is fixed by three numbers — current grade, exam weight, and target. Know it before finals week, not during it.</li>
+      </ol>
+    </section>
+
+    <section class="faq-section">
+      <p class="eyebrow">QUESTIONS</p>
+      <h2>Built for teachers, students, tutors, and homeschool families</h2>
+      <div class="faq-grid">
+        <article><h3>Does GradePoint store my grades?</h3><p>No. Every calculation happens locally in this page. The current version has no account, database, analytics, or server-side form submission — close the tab and the numbers are gone.</p></article>
+        <article><h3>Is this my official GPA?</h3><p>No. Schools calculate GPA with their own scales, rounding, and course rules. Use GradePoint to plan and estimate, then confirm official figures with your school or counselor.</p></article>
+        <article><h3>How could this site earn revenue?</h3><p>Natural paths include display advertising after traffic is established, affiliate links to tutoring and test-prep services, a printable grade-planner template pack, or white-label licensing to tutoring centers and homeschool groups.</p></article>
+        <article><h3>What should be added next?</h3><p>Likely expansions are a semester-by-semester cumulative GPA planner, an assignment weight calculator, an attendance impact estimator, and printable report-card comment helpers for teachers.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>GradePoint</strong> — practical grade calculators for the classroom.</p>
+    <p class="fineprint">Estimates only. Confirm official GPA, grading scales, and curve policies with your school before relying on a result.</p>
+  </footer>
+
+  <section id="printSheet" class="print-sheet" aria-hidden="true">
+    <h1 id="printTitle">GPA Summary</h1>
+    <p id="printMeta"></p>
+    <table><tbody id="printRows"></tbody></table>
+    <p class="print-total">Unweighted GPA: <strong id="printGpaU"></strong> · Weighted GPA: <strong id="printGpaW"></strong></p>
+    <p>This summary is an estimate, not an official transcript. School scales, rounding, and course rules vary — confirm official figures with your school or counselor.</p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
