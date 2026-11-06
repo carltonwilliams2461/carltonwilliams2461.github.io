@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Preview deployment. Replace with the production domain after transfer.
+Sitemap: https://carltonwilliams2461.github.io/milemoney/sitemap.xml

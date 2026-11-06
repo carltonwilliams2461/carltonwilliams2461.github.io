@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MileMoney — Cost-Per-Mile, Load Profit & IFTA Calculators for Truckers</title>
+  <meta name="description" content="Free practical calculators for owner-operators and small fleets: cost per mile, load profit checker, fuel surcharge, break-even rate finder, and an IFTA fuel-tax estimator. Runs entirely in your browser.">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "MileMoney",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Any",
+    "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"},
+    "description": "Cost-per-mile, load profit, fuel surcharge, break-even rate, and IFTA fuel-tax estimator calculators for owner-operators and small fleets, running entirely in the browser."
+  }
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="MileMoney home">
+      <img src="assets/favicon.svg" alt="" width="42" height="42">
+      <span>Mile<strong>Money</strong></span>
+    </a>
+    <nav aria-label="Calculator navigation">
+      <a href="#cost">Cost Per Mile</a>
+      <a href="#load">Load Profit</a>
+      <a href="#surcharge">Fuel Surcharge</a>
+      <a href="#breakeven">Break-Even Rate</a>
+      <a href="#ifta">IFTA Estimator</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">OWNER-OPERATOR TOOLKIT</p>
+        <h1>Know your number.<br>Run the load.</h1>
+        <p class="lede">MileMoney turns truck payments, fuel, and deadhead miles into one clear cost per mile — so you know what a load pays before you ever turn the key.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#cost">Find my cost per mile</a>
+          <a class="button secondary" href="#load">Check a load</a>
+        </div>
+        <ul class="hero-points" aria-label="Product highlights">
+          <li>No account</li>
+          <li>No subscription</li>
+          <li>Runs in your browser</li>
+          <li>Printable cost summary</li>
+        </ul>
+      </div>
+      <aside class="hero-card" aria-label="Example result">
+        <p class="card-label">LIVE TRUCKING MATH</p>
+        <div class="hero-number"><span>Fixed</span><strong>+</strong><span>Variable</span><strong>=</strong><span>Your $/mi</span></div>
+        <p>Every cost that follows the truck — payment, insurance, plates, fuel, tires — lands in one number. If a load does not beat that number, it does not pay.</p>
+        <div class="mini-grid">
+          <div><span>5</span><small>working tools</small></div>
+          <div><span>0</span><small>data uploaded</small></div>
+          <div><span>1</span><small>clear number</small></div>
+        </div>
+      </aside>
+    </section>
+
+    <section id="cost" class="tool-section">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 01</p>
+        <h2>Cost-Per-Mile Calculator</h2>
+        <p>Start with the sample numbers, replace them with your truck's real costs, and print a clean summary when the number makes sense. This is the number every other decision on this page is measured against.</p>
+      </div>
+
+      <div class="cost-layout">
+        <form id="cpmForm" class="panel form-panel">
+          <fieldset>
+            <legend>Monthly fixed costs</legend>
+            <div class="grid three">
+              <label>Truck payment ($/mo)<input id="cpmTruck" type="number" min="0" step="0.01" value="1800"></label>
+              <label>Trailer payment ($/mo)<input id="cpmTrailer" type="number" min="0" step="0.01" value="600"></label>
+              <label>Insurance ($/mo)<input id="cpmInsurance" type="number" min="0" step="0.01" value="1400"></label>
+              <label>Permits &amp; plates ($/mo)<input id="cpmPermits" type="number" min="0" step="0.01" value="200"></label>
+              <label>Other fixed ($/mo)<input id="cpmOtherFixed" type="number" min="0" step="0.01" value="500"></label>
+            </div>
+            <p class="hint">Fixed costs are owed whether the truck moves or sits. Spread items like annual plates and permits across twelve months.</p>
+          </fieldset>
+
+          <fieldset>
+            <legend>Miles &amp; variable costs</legend>
+            <div class="grid three">
+              <label>Miles driven per month<input id="cpmMiles" type="number" min="1" step="1" value="10000"></label>
+              <label>Fuel price ($/gal)<input id="cpmFuelPrice" type="number" min="0" step="0.01" value="4.00"></label>
+              <label>Truck MPG<input id="cpmMpg" type="number" min="0.1" step="0.1" value="6.5"></label>
+              <label>Maintenance ($/mi)<input id="cpmMaintenance" type="number" min="0" step="0.001" value="0.15"></label>
+              <label>Tires ($/mi)<input id="cpmTires" type="number" min="0" step="0.001" value="0.05"></label>
+              <label>Repairs reserve ($/mi)<input id="cpmRepairs" type="number" min="0" step="0.001" value="0.10"></label>
+            </div>
+            <p class="hint">Fuel cost per mile is fuel price divided by MPG. The repairs reserve is money you set aside per mile so a breakdown is a bill, not a crisis.</p>
+          </fieldset>
+        </form>
+
+        <aside class="panel results-panel" aria-live="polite">
+          <p class="card-label">YOUR COST PER MILE</p>
+          <div class="total-box">
+            <span>Total cost per mile</span>
+            <strong id="cpmTotalPerMile">$0.00</strong>
+            <small>Below this rate, the truck loses money</small>
+          </div>
+          <dl class="result-list">
+            <div><dt>Total fixed costs / mo</dt><dd id="cpmFixedTotal">$0.00</dd></div>
+            <div><dt>Fixed cost per mile</dt><dd id="cpmFixedPerMile">$0.00</dd></div>
+            <div><dt>Fuel cost per mile</dt><dd id="cpmFuelPerMile">$0.00</dd></div>
+            <div><dt>Other variable per mile</dt><dd id="cpmOtherVarPerMile">$0.00</dd></div>
+            <div><dt>Variable cost per mile</dt><dd id="cpmVariablePerMile">$0.00</dd></div>
+            <div class="profit"><dt>Total monthly cost</dt><dd id="cpmMonthlyTotal">$0.00</dd></div>
+          </dl>
+          <div class="result-actions">
+            <button class="button primary" type="button" id="printCpm">Print cost summary</button>
+            <button class="button secondary dark" type="button" id="copyCpm">Copy summary</button>
+          </div>
+          <p id="copyStatus" class="copy-status" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="tools-grid">
+      <article id="load" class="panel tool-card wide-card">
+        <p class="eyebrow">TOOL 02</p>
+        <h2>Load Profit Checker</h2>
+        <p>A rate on a load board is not profit. This checker strips out fuel, factoring, and fees, then grades what is left per mile against your own target.</p>
+        <form id="loadForm" class="stack-form">
+          <div class="grid two">
+            <label>Gross pay ($)<input id="loadGross" type="number" min="0" step="0.01" value="2800"></label>
+            <label>Target profit ($/mi)<input id="loadTarget" type="number" min="0" step="0.01" value="1.50"></label>
+            <label>Loaded miles<input id="loadLoadedMiles" type="number" min="0" step="1" value="950"></label>
+            <label>Deadhead miles<input id="loadDeadheadMiles" type="number" min="0" step="1" value="150"></label>
+            <label>Fuel price ($/gal)<input id="loadFuelPrice" type="number" min="0" step="0.01" value="4.00"></label>
+            <label>Truck MPG<input id="loadMpg" type="number" min="0.1" step="0.1" value="6.5"></label>
+            <label>Factoring (%)<input id="loadFactoringPct" type="number" min="0" max="100" step="0.1" value="2"></label>
+            <label>Lumpers / tolls / other fees ($)<input id="loadFees" type="number" min="0" step="0.01" value="125"></label>
+          </div>
+        </form>
+        <div class="verdict" id="loadVerdict">Profitable</div>
+        <dl class="result-list dark-text">
+          <div><dt>Total miles</dt><dd id="loadTotalMiles">0</dd></div>
+          <div><dt>Fuel cost</dt><dd id="loadFuelCost">$0.00</dd></div>
+          <div><dt>Factoring cost</dt><dd id="loadFactoringCost">$0.00</dd></div>
+          <div><dt>Net revenue (after factoring)</dt><dd id="loadNetRevenue">$0.00</dd></div>
+          <div><dt>Profit</dt><dd id="loadProfit">$0.00</dd></div>
+          <div><dt>Profit per total mile</dt><dd id="loadProfitPerMile">$0.00</dd></div>
+        </dl>
+        <p class="hint" id="loadNote"></p>
+      </article>
+
+      <article id="surcharge" class="panel tool-card">
+        <p class="eyebrow">TOOL 03</p>
+        <h2>Fuel Surcharge Calculator</h2>
+        <p>When fuel runs above the base price in your agreement, the difference — spread across your MPG — is the surcharge owed per mile.</p>
+        <form id="surchargeForm" class="stack-form">
+          <label>Base fuel price ($/gal)<input id="surBasePrice" type="number" min="0" step="0.01" value="3.00"></label>
+          <label>Current fuel price ($/gal)<input id="surCurrentPrice" type="number" min="0" step="0.01" value="4.00"></label>
+          <label>Truck MPG<input id="surMpg" type="number" min="0.1" step="0.1" value="6.5"></label>
+          <label>Linehaul rate ($) — optional<input id="surLinehaul" type="number" min="0" step="0.01" value="2500"></label>
+          <label>Trip miles — optional<input id="surTripMiles" type="number" min="0" step="1" value="1100"></label>
+        </form>
+        <div class="callout-result"><span>Surcharge per mile</span><strong id="surPerMile">$0.00</strong><small id="surNote"></small></div>
+      </article>
+
+      <article id="breakeven" class="panel tool-card">
+        <p class="eyebrow">TOOL 04</p>
+        <h2>Break-Even Rate Finder</h2>
+        <p>The lowest rate per mile that covers the truck, covers every mile you run, and still leaves the monthly profit you are aiming for.</p>
+        <form id="breakevenForm" class="stack-form">
+          <label>Monthly fixed costs ($)<input id="beFixed" type="number" min="0" step="0.01" value="9000"></label>
+          <label>Variable cost per mile ($)<input id="beVariable" type="number" min="0" step="0.001" value="0.92"></label>
+          <label>Monthly miles<input id="beMiles" type="number" min="1" step="1" value="10000"></label>
+          <label>Target monthly profit ($)<input id="beProfit" type="number" min="0" step="0.01" value="4000"></label>
+        </form>
+        <div class="callout-result"><span>Required revenue per mile</span><strong id="beRatePerMile">$0.00</strong><small id="beNote"></small></div>
+      </article>
+    </section>
+
+    <section id="ifta" class="tool-section ifta-section">
+      <div class="section-heading">
+        <p class="eyebrow">TOOL 05</p>
+        <h2>IFTA Fuel-Tax Estimator</h2>
+        <p>Add a row for each state you ran. The estimator works out your fleet MPG from the totals, the gallons your truck actually burned in each state, and whether that state comes out as tax due or a credit.</p>
+        <p class="disclaimer"><strong>Estimator only — not a filing.</strong> This tool gives you a planning estimate. It does not file your IFTA return, and actual returns depend on your base jurisdiction's rules, exact records, and any exemptions. Verify with your IFTA account or a tax professional before filing.</p>
+      </div>
+
+      <div class="panel form-panel">
+        <form id="iftaForm">
+          <div class="table-wrap">
+            <table class="ifta-table">
+              <thead>
+                <tr>
+                  <th scope="col">State</th>
+                  <th scope="col">Miles driven</th>
+                  <th scope="col">Gallons purchased</th>
+                  <th scope="col">Tax rate ($/gal)</th>
+                  <th scope="col">Gallons consumed</th>
+                  <th scope="col">Tax due / (credit)</th>
+                  <th scope="col"><span class="sr-only">Remove row</span></th>
+                </tr>
+              </thead>
+              <tbody id="iftaRows"></tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row">Totals</th>
+                  <td id="iftaTotalMiles">0</td>
+                  <td id="iftaTotalPurchased">0</td>
+                  <td class="muted-cell">Fleet MPG: <strong id="iftaFleetMpg">0.00</strong></td>
+                  <td id="iftaTotalConsumed">0</td>
+                  <td id="iftaNetTax">$0.00</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <button class="button small ghost" type="button" id="addIftaRow">+ Add state row</button>
+          <p class="hint">Gallons consumed per state = state miles ÷ fleet MPG. Tax due or credit per state = (gallons consumed − gallons purchased) × that state's tax rate. A negative result is a credit — you bought more taxed fuel in that state than you burned there.</p>
+        </form>
+        <div class="callout-result ifta-result" aria-live="polite">
+          <span>Estimated net IFTA position</span>
+          <strong id="iftaNetTotal">$0.00</strong>
+          <small id="iftaNote"></small>
+        </div>
+      </div>
+    </section>
+
+    <section id="method" class="method-section">
+      <div>
+        <p class="eyebrow">THE METHOD</p>
+        <h2>Why a cheap rate can still cost you money</h2>
+        <p>A load paying $2.50 a mile sounds strong — until 150 deadhead miles, a 2% factoring cut, and a $4.00 fuel price pull the real profit per mile under your cost. MileMoney runs every load against the whole picture, not the headline rate.</p>
+      </div>
+      <ol class="method-steps">
+        <li><strong>Know your cost per mile first.</strong> Fixed costs spread across your monthly miles, plus fuel, maintenance, tires, and a repairs reserve on every mile.</li>
+        <li><strong>Count every mile, not just loaded miles.</strong> Deadhead burns the same fuel and tires and pays nothing. Profit is measured on total miles.</li>
+        <li><strong>Recover fuel spikes with a surcharge.</strong> When the pump price rises above your base, the surcharge formula keeps that increase off your back.</li>
+        <li><strong>Price from your break-even rate up.</strong> The break-even rate is the floor. Your target profit belongs in the rate before you accept the load, not as a hope afterward.</li>
+      </ol>
+    </section>
+
+    <section class="faq-section">
+      <p class="eyebrow">QUESTIONS</p>
+      <h2>Built for owner-operators and small fleets</h2>
+      <div class="faq-grid">
+        <article><h3>Does MileMoney store my numbers?</h3><p>No. Calculations happen locally in this page. The current version has no account, database, analytics, or server-side form submission.</p></article>
+        <article><h3>Can I file IFTA with this?</h3><p>No. The IFTA tool is an estimator for planning and record-checking. File through your base jurisdiction's official IFTA process with your actual trip and fuel records.</p></article>
+        <article><h3>How could this site earn revenue?</h3><p>Natural paths include display advertising after traffic is established, affiliate links to factoring, ELD, fuel-card, and dispatch software, a premium spreadsheet pack, or white-label licensing to carriers and trucking associations.</p></article>
+        <article><h3>What should be added next?</h3><p>Likely expansions are a detention-pay tracker, per-diem and tax-reserve estimators, lease-purchase payoff checks, and state-by-state IFTA pages with current published rates.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>MileMoney</strong> — practical money calculators for owner-operators and small fleets.</p>
+    <p class="fineprint">Estimates only. Verify rates, tax figures, and agreement terms before relying on a load decision or a tax filing.</p>
+  </footer>
+
+  <section id="printSheet" class="print-sheet" aria-hidden="true">
+    <h1>MileMoney — Cost-Per-Mile Summary</h1>
+    <p id="printMeta"></p>
+    <table><tbody id="printRows"></tbody></table>
+    <p class="print-total">Total cost per mile: <strong id="printTotal"></strong></p>
+    <p>This summary is an estimate based on the numbers entered. It is not financial, tax, or legal advice.</p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
