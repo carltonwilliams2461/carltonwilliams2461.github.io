@@ -20,8 +20,8 @@
 -->
 <script>
 window.PORTFOLIO_DATA = {
-  asOf: "Nov 7, 2026",
-  asOfLong: "Saturday, November 7, 2026",
+  asOf: "Nov 8, 2026",
+  asOfLong: "Sunday, November 8, 2026",
   built: 20,
   targetApps: 20,
   targetLowPerApp: 30,
@@ -398,7 +398,10 @@ window.PORTFOLIO_DATA = {
     { id: "ebay", name: "eBay — Printify Merch · Legacy Thread", detail: "Print-on-demand · tees, hoodies, sweatshirts & sweatsuits · printed & shipped by Printify", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "Live — shirts at $26.99 · promoted listings running at 5% · payouts to LLC checking ending 7535, daily", state: "live" },
     { id: "games", name: "Games — The Shelf of 8", detail: "Deadeye, Basic Training, Ant 3D, Neon Getaway and 4 more · what is in flight finishes — no new games after these", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "In build — Deadeye fix, Basic Training figures, Ant 3D rebuild and Neon Getaway are the active four", state: "build" },
     { id: "services", name: "AI Answering — Client Services (direct)", detail: "Jay · sw4cw Deliveries LLC · $500 setup, then $197 / $297 / $497 a month by tier", proceeds: 0.00, sales: 0, salesLabel: "0 clients", status: "Demo live and test-called — (346) 487-3196 · first pitch to Trent the Barber is next", state: "review" },
-    { id: "clientapps", name: "Client App Builds", detail: "Builds for paying clients on their own store accounts · $399 one store / $599 both stores + one purchase · half to start, half at submission", proceeds: 0.00, sales: 0, salesLabel: "0 builds sold", status: "Open for clients — no client build in hand yet", state: "review" }
+    { id: "clientapps", name: "Client App Builds", detail: "Builds for paying clients on their own store accounts · $399 one store / $599 both stores + one purchase · half to start, half at submission", proceeds: 0.00, sales: 0, salesLabel: "0 builds sold", status: "Open for clients — no client build in hand yet", state: "review" },
+    { id: "redbubble", name: "Redbubble — Print-on-Demand Designs", detail: "Designs on 70+ products — shirts, stickers, mugs, posters · Redbubble prints, ships and handles the customer · buyers come from Redbubble and Google search, no posts needed", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "Started Nov 8 — account and first 12 Christmas designs being set up today", state: "build" },
+    { id: "cults3d", name: "Cults3D — 3D Print Files", detail: "Print-ready STL files made by generator — desk organizers, planters, brackets, cable management · 17.9M monthly visitors already searching for files · 80% of every sale is kept", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "Started Nov 8 — account being created · first batch of ~30 print files in production", state: "build" },
+    { id: "itchio", name: "itch.io — Game Asset Packs", detail: "Sound effects, music and art packs sold to game developers · sells what the game studio already makes · the cut is set by us (10% standard — $8.41 kept on a $10 sale)", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "Started Nov 8 — account being created · first pack built and ready: Dead Air horror SFX, 82 sounds", state: "build" }
   ],
 
   etsyListings: [
@@ -564,6 +567,52 @@ window.PORTFOLIO_DATA = {
         { label: "Full", text: "$599 — both stores + one in-app purchase" },
         { label: "Care plan", text: "$49/mo add-on" },
         { label: "Sales", text: "$0.00 — 0 builds sold yet" }
+      ]
+    },
+    {
+      id: "redbubble",
+      name: "Redbubble — Print-on-Demand Designs",
+      kind: "Marketplace designs · Redbubble · SW4CW Deliveries LLC",
+      what: "Designs uploaded once land on 70+ products — shirts, hoodies, stickers, mugs, posters, phone cases. Redbubble prints, ships and handles the customer; the buyers come from Redbubble's own search and Google — no posts, no followers, no funnel needed.",
+      status: "Started Nov 8 — setting up",
+      statusState: "build",
+      proceeds: 0.00,
+      lines: [
+        { label: "First batch", text: "12 Christmas designs going up first · hundreds of designs is the volume plan" },
+        { label: "Take", text: "About $2 a sale to start — the tier rises as sales grow" },
+        { label: "Payout", text: "PayPal to the LLC · $10 minimum, paid monthly" },
+        { label: "Sales", text: "$0.00 — 0 sales yet" }
+      ]
+    },
+    {
+      id: "cults3d",
+      name: "Cults3D — 3D Print Files",
+      kind: "Digital files marketplace · Cults3D · SW4CW Deliveries LLC",
+      what: "Print-ready STL files for people who own 3D printers — desk organizers, planters, brackets, cable management. One generator makes whole families of files at once, so the shelf fills in bulk. Cults brings around 17.9 million visitors a month already searching for files.",
+      status: "Started Nov 8 — setting up",
+      statusState: "build",
+      proceeds: 0.00,
+      lines: [
+        { label: "First batch", text: "~30 functional files in production — every file print-tested before it lists" },
+        { label: "Take", text: "80% of every sale — $4.00 kept on a $5 file" },
+        { label: "Payout", text: "After a 30-day hold · one identity check at first payout only — approved because the lane is worth it" },
+        { label: "Sales", text: "$0.00 — 0 sales yet" }
+      ]
+    },
+    {
+      id: "itchio",
+      name: "itch.io — Game Asset Packs",
+      kind: "Digital files marketplace · itch.io · SW4CW Deliveries LLC",
+      what: "Sound effects, music and art packs sold to game developers — it sells what the game studio already makes. The biggest packs on the charts carry hundreds of sounds; one price, and buyers can pay above it.",
+      status: "Started Nov 8 — first pack ready",
+      statusState: "build",
+      proceeds: 0.00,
+      lines: [
+        { label: "First pack", text: "Dead Air — Horror SFX & Ambience · 82 sounds, WAV + OGG · built and verified, ready to upload" },
+        { label: "Price", text: "$9.99 — pay-what-you-want floor, buyers average ~30% above the minimum" },
+        { label: "Take", text: "We set itch's cut — 10% standard · $8.41 kept on a $10 sale after fees" },
+        { label: "Payout", text: "PayPal · one typed tax form (LLC name + EIN) at first payout — no photo ID, ever" },
+        { label: "Sales", text: "$0.00 — 0 sales yet" }
       ]
     }
   ]
