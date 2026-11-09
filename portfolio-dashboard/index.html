@@ -401,7 +401,10 @@ window.PORTFOLIO_DATA = {
     { id: "clientapps", name: "Client App Builds", detail: "Builds for paying clients on their own store accounts · $399 one store / $599 both stores + one purchase · half to start, half at submission", proceeds: 0.00, sales: 0, salesLabel: "0 builds sold", status: "Open for clients — no client build in hand yet", state: "review" },
     { id: "redbubble", name: "Redbubble — Print-on-Demand Designs", detail: "Designs on 70+ products — shirts, stickers, mugs, posters · Redbubble prints, ships and handles the customer · buyers come from Redbubble and Google search, no posts needed", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "12 designs in Nov 8 — shop stays private until Redbubble's new-artist classification clears (up to 5 business days), then it goes public", state: "review" },
     { id: "cults3d", name: "Cults3D — 3D Print Files", detail: "Print-ready STL files made by generator — desk organizers, planters, brackets, cable management · 17.9M monthly visitors already searching for files · 80% of every sale is kept", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "LIVE Nov 8 — 3 paid bundles up: Desk Organizer $12 · Planters $12 · Cable Kit $10 · 30 files, searchable now", state: "live" },
-    { id: "itchio", name: "itch.io — Game Asset Packs", detail: "Sound effects, music and art packs sold to game developers · sells what the game studio already makes · the cut is set by us (10% standard — $8.41 kept on a $10 sale)", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "Pack LIVE Nov 8 — Dead Air published at $9.99 · purchases unlock when a payment route is connected (his call)", state: "live" }
+    { id: "itchio", name: "itch.io — Game Asset Packs", detail: "Sound effects, music and art packs sold to game developers · sells what the game studio already makes · the cut is set by us (10% standard — $8.41 kept on a $10 sale)", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "LIVE + BUYABLE Nov 8 — Dead Air at $9.99, Buy Now open · Payoneer linked, tax form filed · payouts ride Payoneer to the LLC bank", state: "live" },
+    { id: "tes", name: "Tes Resources — Teacher Downloads", detail: "Classroom downloads teachers already search for — upper-grade decodable reading packs (a shelf nobody else stocks) and state-named personal-finance exam packs · Tes brings the shoppers, every listing is already written", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "27 listings published Nov 8 — in Tes processing, they appear in the shop within up to 3 working days (Nov 11–13)", state: "review" },
+    { id: "zazzle", name: "Zazzle — Retro Christmas Products", detail: "28 retro Christmas designs on cards, 2027 calendars, gift tags, invitations and wrapping paper · Zazzle prints, ships and handles the customer · holiday shoppers come from Zazzle and Google search", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "LIVE Nov 8 — all 140 products up (28 designs × 5 products) at 10% royalty, verified on the store's own product list", state: "live" },
+    { id: "framer", name: "Framer — Website Templates", detail: "Complete, ready-to-publish website templates on the Framer Marketplace — remix it, connect a domain, press publish · the free church test is live; the paid line was closed by Carlton Nov 8 (checkout lane killed)", proceeds: 0.00, sales: 0, salesLabel: "0 sales", status: "Free test LIVE Nov 8 — 'Grace Oak Meadow' church template, published with no review · paid templates parked by his call", state: "live" }
   ],
 
   etsyListings: [
@@ -604,14 +607,61 @@ window.PORTFOLIO_DATA = {
       name: "itch.io — Game Asset Packs",
       kind: "Digital files marketplace · itch.io · SW4CW Deliveries LLC",
       what: "Sound effects, music and art packs sold to game developers — it sells what the game studio already makes. The biggest packs on the charts carry hundreds of sounds; one price, and buyers can pay above it.",
-      status: "LIVE Nov 8 — payment route pending his call",
+      status: "LIVE + BUYABLE Nov 8 — Payoneer linked",
       statusState: "live",
       proceeds: 0.00,
       lines: [
-        { label: "Live now", text: "Dead Air — Horror SFX & Ambience · 82 sounds, WAV + OGG · page public at $9.99 · register opens when a payment route connects" },
+        { label: "Live now", text: "Dead Air — Horror SFX & Ambience · 82 sounds, WAV + OGG · public at $9.99 with Buy Now open — anyone can buy it today" },
         { label: "Price", text: "$9.99 — pay-what-you-want floor, buyers average ~30% above the minimum" },
         { label: "Take", text: "We set itch's cut — 10% standard · $8.41 kept on a $10 sale after fees" },
-        { label: "Payout", text: "PayPal · one typed tax form (LLC name + EIN) at first payout — no photo ID, ever" },
+        { label: "Payout", text: "Payoneer linked Nov 8 → LLC bank · tax interview filed under Samara (single-member LLC) · Payoneer payouts at $50+" },
+        { label: "Sales", text: "$0.00 — 0 sales yet" }
+      ]
+    },
+    {
+      id: "tes",
+      name: "Tes Resources — Teacher Downloads",
+      kind: "Digital downloads marketplace · Tes · SW4CW Deliveries LLC",
+      what: "Downloadable classroom packs sold to teachers on Tes, the teacher marketplace — upper-grade decodable reading passages (grades 4–8, a shelf with no competing packs on Tes) and personal-finance exam packs named for the states that now require the course (Ohio, Texas, Alabama). Tes brings the shoppers; no posts or funnel needed.",
+      status: "27 published Nov 8 — in processing",
+      statusState: "review",
+      proceeds: 0.00,
+      lines: [
+        { label: "Published", text: "27 listings — 14 worksheet singles + bundles, 9 decodable packs, 4 personal-finance packs · all passed independent answer-checks before publishing" },
+        { label: "Prices", text: "Singles $4.99 · packs $9.99 · complete bundles $19.99" },
+        { label: "Take", text: "60% kept on each sale — $2.99 on a $4.99 single, $5.99 on a $9.99 pack, $11.99 on a bundle" },
+        { label: "Payout", text: "Withdrawals unlock at $10 · payout details get set when the first money lands" },
+        { label: "Sales", text: "$0.00 — 0 sales yet · listings appear in the shop within up to 3 working days (Nov 11–13)" }
+      ]
+    },
+    {
+      id: "zazzle",
+      name: "Zazzle — Retro Christmas Products",
+      kind: "Print-on-demand marketplace · Zazzle · SW4CW Deliveries LLC",
+      what: "28 retro Christmas designs — vintage Santa, mid-century holiday art — each one on five products: folded holiday cards, 2027 wall calendars, gift tags, party invitations and wrapping paper. Zazzle prints, ships and handles the customer; holiday shoppers find them through Zazzle and Google search.",
+      status: "LIVE Nov 8 — all 140 products up",
+      statusState: "live",
+      proceeds: 0.00,
+      lines: [
+        { label: "Live now", text: "140 products — 28 cards · 28 calendars · 28 gift tags · 28 invitations · 28 wrapping papers · verified on the store's own product list" },
+        { label: "Prices", text: "Cards $3.21 · calendars $24.25 · gift tags $9.85 · invitations $2.71 · wrapping paper $25.70" },
+        { label: "Take", text: "10% royalty on every product — roughly $1–$2 kept per sale" },
+        { label: "Payout", text: "$50 threshold, paid about 45 days after month-end · payment details get set when the first money lands" },
+        { label: "Sales", text: "$0.00 — 0 sales yet" }
+      ]
+    },
+    {
+      id: "framer",
+      name: "Framer — Website Templates",
+      kind: "Template marketplace · Framer · SW4CW Deliveries",
+      what: "Complete website templates on the Framer Marketplace — every page written and filled in, so a buyer can remix the template, connect a domain and press publish as-is. The free church test proved the shelf: it went live the same minute it was posted, with no review. The paid line was closed by Carlton on Nov 8 when its checkout lane turned into a gatekeeper fight.",
+      status: "Free test LIVE Nov 8 · paid line closed by his call",
+      statusState: "live",
+      proceeds: 0.00,
+      lines: [
+        { label: "Live now", text: "'Grace Oak Meadow' — a complete church website template (6 pages), free on the Marketplace since Nov 8" },
+        { label: "Banked", text: "A second complete church site ('Harbor Point') is built and ready — its $45 listing stays unsubmitted unless the lane reopens" },
+        { label: "Take", text: "Framer takes 0% — a paid sale would keep about $42 of $45 after checkout fees" },
         { label: "Sales", text: "$0.00 — 0 sales yet" }
       ]
     }
